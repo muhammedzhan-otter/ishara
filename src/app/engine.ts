@@ -1,4 +1,5 @@
 import type { Guide } from '../meeting/coach.ts'
+import { stateColor } from '../ui/state.ts'
 import { startCamera } from '../vision/camera.ts'
 import { FeatureExtractor, type Body, type FrameFeatures } from '../vision/features.ts'
 import type { Progress } from '../vision/loader.ts'
@@ -16,8 +17,11 @@ export interface Tick {
 export class Engine {
   readonly video = document.createElement('video')
   readonly overlay = document.createElement('canvas')
-  /** Цвет скелета руки: экраны меняют его, чтобы подсветить успех или ошибку. */
-  handColor = '#4f7cff'
+  /**
+   * Цвет скелета руки. Экраны меняют его через showState() из ui/state.ts, вместе с кольцом плитки:
+   * синий «твой ход», янтарный «поправь», зелёный «получилось» (токены --blue, --amber, --green).
+   */
+  handColor = stateColor('turn')
   /** Цель для руки из подсказки: круг, куда поставить кисть, и стрелка к нему. */
   guide: Guide | null = null
 
@@ -26,6 +30,8 @@ export class Engine {
   private listeners = new Set<(t: Tick) => void>()
   private ctx = this.overlay.getContext('2d')!
   private modelsReady: Promise<void> | null = null
+  /** Пульс и вращение круга-цели выключаются, если в системе просят меньше движения. */
+  private calm = window.matchMedia('(prefers-reduced-motion: reduce)')
 
   constructor() {
     this.video.className = 'feed'
@@ -68,7 +74,8 @@ export class Engine {
   }
 
   /**
-   * Круг-цель и стрелка от кисти к нему. Canvas отражается стилями как зеркало,
+   * Круг-цель и стрелка от кисти к нему, цвет «поправь» (--amber). Тёмный ореол под линиями,
+   * чтобы цель читалась и на светлой стене. Canvas отражается стилями как зеркало,
    * поэтому зеркальные координаты тела переводим обратно в координаты кадра.
    */
   private drawGuide(guide: Guide, body: Body, now: number) {
@@ -79,17 +86,41 @@ export class Engine {
     })
     const t = toCanvas(guide.target)
     const r = guide.target.r * body.shoulderWidth
-    const pulse = 1 + 0.08 * Math.sin(now / 180)
     const scale = c.width / 640
+    const color = stateColor('fix')
+    const halo = 'rgb(20 14 4 / 50%)'
+    const moving = !this.calm.matches
 
     ctx.save()
-    ctx.strokeStyle = '#ffb547'
-    ctx.fillStyle = 'rgb(255 181 71 / 16%)'
-    ctx.lineWidth = 4 * scale
-    ctx.setLineDash([10 * scale, 8 * scale])
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+
+    // Пульс: кольцо расходится от края цели и гаснет, раз в 1,6 с.
+    if (moving) {
+      const k = (now % 1600) / 1600
+      ctx.globalAlpha = 0.8 * (1 - k)
+      ctx.strokeStyle = color
+      ctx.lineWidth = 3 * scale
+      ctx.beginPath()
+      ctx.arc(t.x, t.y, r * (1 + 0.45 * k), 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.globalAlpha = 1
+    }
+
+    // Сама цель: заливка, тёмный ореол и медленно бегущий пунктир.
     ctx.beginPath()
-    ctx.arc(t.x, t.y, r * pulse, 0, Math.PI * 2)
+    ctx.arc(t.x, t.y, r, 0, Math.PI * 2)
+    ctx.fillStyle = color
+    ctx.globalAlpha = 0.2
     ctx.fill()
+    ctx.globalAlpha = 1
+    ctx.strokeStyle = halo
+    ctx.lineWidth = 9 * scale
+    ctx.stroke()
+    ctx.strokeStyle = color
+    ctx.lineWidth = 4.5 * scale
+    ctx.setLineDash([12 * scale, 7 * scale])
+    ctx.lineDashOffset = moving ? -now / 40 : 0
     ctx.stroke()
     ctx.setLineDash([])
 
@@ -102,20 +133,35 @@ export class Engine {
         // Стрелка от кисти до края круга.
         const ux = dx / d
         const uy = dy / d
-        const ex = t.x - ux * r
-        const ey = t.y - uy * r
+        const sx = f.x + ux * 20 * scale
+        const sy = f.y + uy * 20 * scale
+        const ex = t.x - ux * (r + 6 * scale)
+        const ey = t.y - uy * (r + 6 * scale)
         const head = 18 * scale
-        ctx.lineWidth = 6 * scale
-        ctx.beginPath()
-        ctx.moveTo(f.x + ux * 20 * scale, f.y + uy * 20 * scale)
-        ctx.lineTo(ex, ey)
+        const shaft = () => {
+          ctx.beginPath()
+          ctx.moveTo(sx, sy)
+          ctx.lineTo(ex - ux * head * 0.6, ey - uy * head * 0.6)
+          ctx.stroke()
+        }
+        const tip = () => {
+          ctx.beginPath()
+          ctx.moveTo(ex, ey)
+          ctx.lineTo(ex - ux * head - uy * head * 0.6, ey - uy * head + ux * head * 0.6)
+          ctx.lineTo(ex - ux * head + uy * head * 0.6, ey - uy * head - ux * head * 0.6)
+          ctx.closePath()
+        }
+        ctx.strokeStyle = halo
+        ctx.lineWidth = 10 * scale
+        shaft()
+        tip()
+        ctx.lineWidth = 4 * scale
         ctx.stroke()
-        ctx.beginPath()
-        ctx.moveTo(ex, ey)
-        ctx.lineTo(ex - ux * head - uy * head * 0.6, ey - uy * head + ux * head * 0.6)
-        ctx.lineTo(ex - ux * head + uy * head * 0.6, ey - uy * head - ux * head * 0.6)
-        ctx.closePath()
-        ctx.fillStyle = '#ffb547'
+        ctx.strokeStyle = color
+        ctx.lineWidth = 5 * scale
+        shaft()
+        tip()
+        ctx.fillStyle = color
         ctx.fill()
       }
     }

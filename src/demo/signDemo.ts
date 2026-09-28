@@ -25,6 +25,21 @@ const SLEEVE_EDGE = '#8e4527'
 /** Кадр для показа: от макушки до груди, чтобы жесты у груди помещались. */
 export const DEMO_CROP: [number, number, number, number] = [0, 45, 400, 225]
 
+/** Кадр миниатюры 4:3 (карточка жеста, словарь): лицо, грудь и рука целиком при любом жесте. */
+export const THUMB_CROP: [number, number, number, number] = [70, 46, 296, 222]
+
+/** Момент показа, где жест узнаётся лучше всего: стоп-кадр миниатюры, demo.seek(KEY_MOMENT[id]). */
+export const KEY_MOMENT: Record<SignId, number> = {
+  privet: 1.0,
+  poka: 1.0,
+  spasibo: 1.7,
+  da: 0.75,
+  net: 0.8,
+  khorosho: 1.5,
+  otlichno: 1.5,
+  plokho: 1.5,
+}
+
 const CHAINS: { idx: number[]; width: number }[] = [
   { idx: [1, 2, 3, 4], width: 0.25 },
   { idx: [5, 6, 7, 8], width: 0.21 },

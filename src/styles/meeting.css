@@ -1,10 +1,6 @@
 /* ---------- Встреча ---------- */
 
-.meeting {
-  display: grid;
-  gap: 14px;
-  align-content: start;
-}
+/* Раскладка экрана-звонка (.call), верхняя панель, плитки и субтитры общие: styles/base.css. */
 
 .answer__title {
   margin-bottom: 10px;

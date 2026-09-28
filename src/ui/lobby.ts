@@ -6,9 +6,10 @@ import { ALL_SIGNS, SIGNS } from '../signs/catalog.ts'
 import { CameraError } from '../vision/camera.ts'
 import { SignDemo } from '../demo/signDemo.ts'
 import { Avatar } from './avatar.ts'
-import { h } from './dom.ts'
+import { h, plural } from './dom.ts'
 import type { Hint } from '../meeting/coach.ts'
 import { HintBar } from './hintBar.ts'
+import { stateColor } from './state.ts'
 
 /** Сколько держать руку в кадре, чтобы начать: случайное движение не считается. */
 const HOLD_MS = 1500
@@ -74,7 +75,7 @@ export class Lobby {
         h('aside', { class: 'meet-card' },
           h('div', { class: 'meet-card__avatar' }, avatar.el),
           h('h1', {}, `Встреча с ${PARTNER_NAME}`),
-          h('p', { class: 'meet-card__meta' }, `Обучение и ${SCRIPT.length} вопросов, около пяти минут. Ответы на русском жестовом языке.`),
+          h('p', { class: 'meet-card__meta' }, `Обучение и ${SCRIPT.length} ${plural(SCRIPT.length, 'вопрос', 'вопроса', 'вопросов')}, около пяти минут. Ответы на русском жестовом языке.`),
           h('ol', { class: 'howto' },
             h('li', {}, 'Сядь так, чтобы камера видела лицо, плечи и руки.'),
             h('li', {}, `Сначала ${PARTNER_NAME} покажет восемь жестов, а ты повторишь их за ней.`),
@@ -152,7 +153,7 @@ export class Lobby {
     }
     const progress = this.holdSince === null ? 0 : Math.min(1, (t - this.holdSince) / HOLD_MS)
     this.meter.style.width = `${Math.round(progress * 100)}%`
-    this.engine.handColor = progress > 0 ? '#3ddc97' : '#4f7cff'
+    this.engine.handColor = stateColor(progress > 0 ? 'ok' : 'turn')
     if (progress >= 1) {
       this.off?.()
       this.off = null

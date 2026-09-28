@@ -4,9 +4,10 @@ import { MAX_PER_ANSWER, answerScore, saveRecord, swapLastScore, topMistakes } f
 import { PARTNER_NAME } from '../meeting/script.ts'
 import { SIGNS } from '../signs/catalog.ts'
 import { SignRecognizer } from '../signs/recognizer.ts'
-import { formatTime, h } from './dom.ts'
+import { formatTime, h, plural } from './dom.ts'
 import { HintBar } from './hintBar.ts'
 import type { Answer } from './meeting.ts'
+import { stateColor } from './state.ts'
 
 /** Сначала даём посмотреть итоги: иначе прощальный взмах сразу запустил бы встречу заново. */
 const IGNORE_MS = 4000
@@ -36,7 +37,7 @@ export class Results {
     const mistakes = topMistakes(answers.flatMap((a) => a.hints))
     const progress =
       prev === null ? null
-      : total > prev ? `На ${total - prev} очков лучше, чем в прошлый раз.`
+      : total > prev ? `На ${total - prev} ${plural(total - prev, 'очко', 'очка', 'очков')} лучше, чем в прошлый раз.`
       : total === prev ? 'Столько же, сколько в прошлый раз.'
       : `В прошлый раз было ${prev}. Получится лучше!`
 
@@ -55,7 +56,7 @@ export class Results {
         h('section', { class: 'mistakes' },
           h('h2', {}, 'Над чем поработать'),
           mistakes.length
-            ? h('ol', {}, ...mistakes.map((m) => h('li', {}, m.text, h('span', {}, m.count > 1 ? ` (${m.count} раза)` : ''))))
+            ? h('ol', {}, ...mistakes.map((m) => h('li', {}, m.text, h('span', {}, m.count > 1 ? ` (${m.count} ${plural(m.count, 'раз', 'раза', 'раз')})` : ''))))
             : h('p', {}, 'Подсказки не понадобились. Все жесты получились сразу!'),
         ),
         h('table', { class: 'results__table' },
@@ -88,7 +89,7 @@ export class Results {
     )
     if (stars >= 2) this.el.append(confetti())
     engine.mount(tile)
-    engine.handColor = '#4f7cff'
+    engine.handColor = stateColor('turn')
     this.coach.reset(performance.now())
     this.off = engine.on((t) => this.tick(t))
   }

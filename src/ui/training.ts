@@ -6,17 +6,17 @@ import { Coach } from '../meeting/coach.ts'
 import { PARTNER_NAME } from '../meeting/script.ts'
 import { SIGNS, type SignId } from '../signs/catalog.ts'
 import { SignRecognizer } from '../signs/recognizer.ts'
+import { Caption } from './caption.ts'
 import { h } from './dom.ts'
 import { HintBar } from './hintBar.ts'
 import { SignCard } from './signCard.ts'
+import { hintState, showState, tileStatus } from './state.ts'
 
 /** Порядок обучения: как жесты понадобятся во встрече. */
 export const TRAINING: SignId[] = ['privet', 'khorosho', 'otlichno', 'plokho', 'da', 'net', 'spasibo', 'poka']
 
 /** Если жест не выходит, через это время идём дальше: потренироваться можно и во встрече. */
 const SIGN_TIMEOUT_MS = 30_000
-
-const COLOR = { idle: '#4f7cff', warn: '#ffb547', ok: '#3ddc97' }
 
 /**
  * Обучение перед встречей: Айгерим показывает жест, человек повторяет как в зеркале.
@@ -26,7 +26,10 @@ export class Training {
   readonly el: HTMLElement
   private demo = new SignDemo()
   private hint = new HintBar()
+  /** Что говорит Айгерим, текстом: для тех, кто не слышит или без звука. */
+  private caption = new Caption()
   private selfTile: HTMLElement
+  private partnerTile: HTMLElement
   private cardBox: HTMLElement
   private stepLabel: HTMLElement
   private dots: HTMLElement[]
@@ -47,7 +50,8 @@ export class Training {
 
     this.stepLabel = h('span', { class: 'topbar__step' })
     this.dots = TRAINING.map(() => h('i'))
-    this.selfTile = h('div', { class: 'tile tile--self' }, this.hint.el, h('div', { class: 'tile__label' }, 'Ты'))
+    this.selfTile = h('div', { class: 'tile tile--self' }, this.hint.el, tileStatus(), h('div', { class: 'tile__label' }, 'Ты'))
+    this.partnerTile = h('div', { class: 'tile tile--partner' }, this.demo.el, h('div', { class: 'tile__label' }, `${PARTNER_NAME} показывает`))
     this.cardBox = h('div', { class: 'training__card' })
     // Для тех, кто уже знает жесты или проходит второй раз: сразу к встрече.
     const skip = h('button', { class: 'btn btn--ghost', type: 'button' }, 'Пропустить обучение')
@@ -57,23 +61,24 @@ export class Training {
       onDone()
     })
 
-    this.el = h('section', { class: 'screen meeting training' },
+    this.el = h('section', { class: 'screen call training' },
       h('header', { class: 'topbar' },
         h('span', { class: 'topbar__title' }, 'Обучение'),
         this.stepLabel,
         h('span', { class: 'dots', 'aria-hidden': true }, ...this.dots),
       ),
       h('div', { class: 'stage' },
-        h('div', { class: 'tile tile--partner' }, this.demo.el, h('div', { class: 'tile__label' }, `${PARTNER_NAME} показывает`)),
+        this.partnerTile,
         this.selfTile,
       ),
+      this.caption.el,
       h('p', { class: 'training__lead' }, `Смотри, как показывает ${PARTNER_NAME}, и повтори правой рукой, как в зеркале.`),
       this.cardBox,
       h('div', { class: 'training__footer' }, skip),
     )
 
     engine.mount(this.selfTile)
-    engine.handColor = COLOR.idle
+    showState(engine, this.selfTile, null)
     this.off = engine.on((t) => this.tick(t))
     this.run().then(() => {
       if (!this.closed) onDone()
@@ -91,7 +96,7 @@ export class Training {
       this.dots.forEach((d, j) => d.classList.toggle('on', j <= i))
       this.card?.destroy()
       // Показ уже идёт слева крупно, в карточке дублировать не нужно.
-      this.card = new SignCard(id, false)
+      this.card = new SignCard(id, { demo: false, wide: true })
       this.cardBox.replaceChildren(this.card.el)
       this.demo.play(id)
       await this.say(`Жест «${SIGNS[id].word}». Повтори за мной.`)
@@ -118,8 +123,11 @@ export class Training {
     if (this.closed) return
     this.demo.figure.setListening(false)
     this.demo.figure.setSpeaking(true)
+    this.partnerTile.classList.add('is-speaking')
+    this.caption.partner(text)
     await this.voice.say(text, 'partner')
     this.demo.figure.setSpeaking(false)
+    this.partnerTile.classList.remove('is-speaking')
   }
 
   private expect(id: SignId): Promise<boolean> {
@@ -127,6 +135,7 @@ export class Training {
     this.coach.reset(performance.now())
     // Пока человек пробует, Айгерим слушает: голова чуть наклонена.
     this.demo.figure.setListening(true)
+    showState(this.engine, this.selfTile, 'turn')
     return new Promise((resolve) => {
       this.target = { id, resolve, started: performance.now() }
     })
@@ -139,11 +148,11 @@ export class Training {
     const hint = this.coach.update(features.timestamp, features, state, [target.id])
     this.hint.show(state.recognized ? null : hint)
     this.card?.update(state.evals[0], true)
-    this.engine.handColor = hint && hint.kind !== 'info' ? COLOR.warn : COLOR.idle
+    showState(this.engine, this.selfTile, hintState(hint))
     this.engine.guide = state.recognized ? null : (hint?.guide ?? null)
 
     if (state.recognized) {
-      this.engine.handColor = COLOR.ok
+      showState(this.engine, this.selfTile, 'ok')
       this.sfx.success()
       this.finish(true)
     } else if (performance.now() - target.started > SIGN_TIMEOUT_MS) {
@@ -158,7 +167,7 @@ export class Training {
     this.hint.show(null)
     t?.resolve(ok)
     wait(900).then(() => {
-      if (!this.target) this.engine.handColor = COLOR.idle
+      if (!this.target && !this.closed) showState(this.engine, this.selfTile, null)
     })
   }
 

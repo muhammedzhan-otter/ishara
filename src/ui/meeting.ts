@@ -7,9 +7,11 @@ import { ALL_SIGNS, SIGNS, type SignId } from '../signs/catalog.ts'
 import { SignRecognizer } from '../signs/recognizer.ts'
 import { SignDemo } from '../demo/signDemo.ts'
 import type { Mood } from './avatar.ts'
+import { Caption } from './caption.ts'
 import { formatTime, h } from './dom.ts'
 import { HintBar } from './hintBar.ts'
 import { SignCard } from './signCard.ts'
+import { hintState, showState, tileStatus } from './state.ts'
 
 /** Итог одного вопроса: что спросили, чем ответили, сколько времени и подсказок понадобилось. */
 export interface Answer {
@@ -22,7 +24,6 @@ export interface Answer {
   hints: string[]
 }
 
-const COLOR = { idle: '#4f7cff', warn: '#ffb547', ok: '#3ddc97' }
 /** Если ответа всё нет, Айгерим сама показывает подходящие жесты. */
 const SHOW_HOW_MS = 6000
 
@@ -34,8 +35,8 @@ export class Meeting {
   private hint = new HintBar()
   private selfTile: HTMLElement
   private partnerTile: HTMLElement
-  private caption: HTMLElement
-  private captionWho: HTMLElement
+  /** Субтитры: реплики Айгерим и перевод жестов человека. */
+  private caption = new Caption()
   private cardsBox: HTMLElement
   private answerTitle: HTMLElement
   private stepLabel: HTMLElement
@@ -62,13 +63,11 @@ export class Meeting {
     this.stepLabel = h('span', { class: 'topbar__step' })
     this.timer = h('span', { class: 'topbar__timer' }, '00:00')
     this.partnerTile = h('div', { class: 'tile tile--partner' }, this.partner.el, h('div', { class: 'tile__label' }, PARTNER_NAME))
-    this.selfTile = h('div', { class: 'tile tile--self' }, this.hint.el, h('div', { class: 'tile__label' }, 'Ты'))
-    this.captionWho = h('b')
-    this.caption = h('span')
+    this.selfTile = h('div', { class: 'tile tile--self' }, this.hint.el, tileStatus(), h('div', { class: 'tile__label' }, 'Ты'))
     this.answerTitle = h('div', { class: 'answer__title' })
     this.cardsBox = h('div', { class: 'answer__cards' })
 
-    this.el = h('section', { class: 'screen meeting' },
+    this.el = h('section', { class: 'screen call meeting' },
       h('header', { class: 'topbar' },
         h('span', { class: 'topbar__rec', 'aria-hidden': true }),
         h('span', { class: 'topbar__title' }, `Встреча с ${PARTNER_NAME}`),
@@ -76,12 +75,12 @@ export class Meeting {
         this.timer,
       ),
       h('div', { class: 'stage' }, this.partnerTile, this.selfTile),
-      h('div', { class: 'caption', 'aria-live': 'polite' }, this.captionWho, this.caption),
+      this.caption.el,
       h('div', { class: 'answer' }, this.answerTitle, this.cardsBox),
     )
 
     engine.mount(this.selfTile)
-    engine.handColor = COLOR.idle
+    showState(engine, this.selfTile, null)
     this.off = engine.on((t) => this.tick(t))
     this.clock = window.setInterval(() => (this.timer.textContent = formatTime(performance.now() - this.startedAt)), 500)
     this.run().then((answers) => {
@@ -123,9 +122,7 @@ export class Meeting {
     this.partner.figure.setMood(mood)
     this.partner.figure.setSpeaking(true)
     this.partnerTile.classList.add('is-speaking')
-    this.captionWho.textContent = `${PARTNER_NAME}:`
-    this.caption.textContent = text
-    this.caption.parentElement!.dataset.who = 'partner'
+    this.caption.partner(text)
     await this.voice.say(text, 'partner')
     this.partner.figure.setSpeaking(false)
     this.partnerTile.classList.remove('is-speaking')
@@ -133,21 +130,19 @@ export class Meeting {
 
   /** Перевод жеста: показываем словом и озвучиваем, как будто человек сказал это вслух. */
   private async userSay(word: string) {
-    this.captionWho.textContent = 'Ты жестом:'
-    this.caption.textContent = `«${word}»`
-    this.caption.parentElement!.dataset.who = 'user'
+    this.caption.user(word)
     this.selfTile.dataset.said = word
     this.selfTile.classList.add('is-success')
     await this.voice.say(word, 'user')
     await wait(300)
     this.selfTile.classList.remove('is-success')
-    this.engine.handColor = COLOR.idle
+    showState(this.engine, this.selfTile, null)
   }
 
   private showCards(expect: SignId[], title: string) {
     this.answerTitle.textContent = title
     for (const c of this.cards) c.destroy()
-    this.cards = expect.map((id) => new SignCard(id))
+    this.cards = expect.map((id) => new SignCard(id, { wide: expect.length === 1 }))
     this.cardsBox.replaceChildren(...this.cards.map((c) => c.el))
   }
 
@@ -156,6 +151,7 @@ export class Meeting {
     this.others.reset()
     this.coach.reset(performance.now())
     this.partner.figure.setListening(true)
+    showState(this.engine, this.selfTile, 'turn')
     return new Promise((resolve) => {
       this.listening = { expect, resolve, started: performance.now() }
     })
@@ -173,7 +169,7 @@ export class Meeting {
     this.hint.show(state.recognized ? null : hint)
     const best = bestEval(state.evals)
     for (const card of this.cards) card.update(state.evals.find((e) => e.id === card.id), card.id === best?.id)
-    this.engine.handColor = hint && hint.kind !== 'info' ? COLOR.warn : COLOR.idle
+    showState(this.engine, this.selfTile, hintState(hint))
     this.engine.guide = state.recognized ? null : (hint?.guide ?? null)
 
     const waited = performance.now() - l.started
@@ -184,7 +180,7 @@ export class Meeting {
     }
 
     if (state.recognized) {
-      this.engine.handColor = COLOR.ok
+      showState(this.engine, this.selfTile, 'ok')
       this.sfx.success()
       this.finishListening(state.recognized)
     } else if (waited > STEP_TIMEOUT_MS) {
@@ -199,6 +195,8 @@ export class Meeting {
     this.engine.guide = null
     this.partner.stop()
     this.hint.show(null)
+    // Жест понят: зелёный держится, пока звучит перевод (userSay снимет). Иначе ход закончен.
+    if (!sign) showState(this.engine, this.selfTile, null)
     l?.resolve(sign)
   }
 
