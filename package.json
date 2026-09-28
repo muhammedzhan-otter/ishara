@@ -1,0 +1,20 @@
+{
+  "name": "ishara",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/copy-wasm.mjs",
+    "dev": "vite --host",
+    "prebuild": "node scripts/copy-wasm.mjs",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^1.0.1"
+  }
+}

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0d12" />
+    <title>Ishara</title>
+  </head>
+  <body>
+    <div id="app">
+      <main class="stage">
+        <section class="tile tile--self">
+          <video id="video" autoplay muted playsinline></video>
+          <canvas id="overlay"></canvas>
+          <div class="tile__label">Вы</div>
+        </section>
+        <p id="status" class="status">Загружаем распознавание…</p>
+      </main>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
