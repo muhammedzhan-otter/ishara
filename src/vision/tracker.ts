@@ -5,6 +5,7 @@ import {
   type Landmark,
   type NormalizedLandmark,
 } from '@mediapipe/tasks-vision'
+import { fetchAll, type Progress } from './loader.ts'
 
 const BASE = import.meta.env.BASE_URL
 
@@ -34,12 +35,22 @@ export class Tracker {
   private pose!: PoseLandmarker
   private lastTs = -1
 
-  async init(): Promise<void> {
+  /** Загружает модели; onProgress получает долю скачанного от 0 до 1. */
+  async init(onProgress?: Progress): Promise<void> {
+    // WASM качаем заранее только ради прогресса: MediaPipe потом возьмёт его из кэша браузера.
+    const [handModel, poseModel] = await fetchAll(
+      [
+        `${BASE}models/hand_landmarker.task`,
+        `${BASE}models/pose_landmarker_lite.task`,
+        `${BASE}mediapipe/wasm/vision_wasm_internal.wasm`,
+      ],
+      onProgress,
+    )
     const vision = await FilesetResolver.forVisionTasks(`${BASE}mediapipe/wasm`)
     const create = async (delegate: 'GPU' | 'CPU') => {
       const [hands, pose] = await Promise.all([
         HandLandmarker.createFromOptions(vision, {
-          baseOptions: { modelAssetPath: `${BASE}models/hand_landmarker.task`, delegate },
+          baseOptions: { modelAssetBuffer: handModel, delegate },
           runningMode: 'VIDEO',
           numHands: 2,
           minHandDetectionConfidence: 0.5,
@@ -47,7 +58,7 @@ export class Tracker {
           minTrackingConfidence: 0.5,
         }),
         PoseLandmarker.createFromOptions(vision, {
-          baseOptions: { modelAssetPath: `${BASE}models/pose_landmarker_lite.task`, delegate },
+          baseOptions: { modelAssetBuffer: poseModel, delegate },
           runningMode: 'VIDEO',
           numPoses: 1,
         }),

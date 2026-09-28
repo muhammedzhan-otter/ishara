@@ -9,6 +9,10 @@ export class CameraError extends Error {
 
 /** Включает фронтальную камеру и ждёт первый кадр. */
 export async function startCamera(video: HTMLVideoElement): Promise<void> {
+  // Для разработки: ?video=a.mp4,b.mp4 подставляет записи вместо камеры, по кругу.
+  const fake = import.meta.env.DEV ? new URLSearchParams(location.search).get('video') : null
+  if (fake) return playFiles(video, fake.split(','))
+
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
     throw new CameraError(
       'Браузер не даёт доступ к камере',
@@ -49,4 +53,17 @@ export async function startCamera(video: HTMLVideoElement): Promise<void> {
   if (video.readyState < 2) {
     await new Promise((resolve) => video.addEventListener('loadeddata', resolve, { once: true }))
   }
+}
+
+async function playFiles(video: HTMLVideoElement, files: string[]): Promise<void> {
+  let i = 0
+  video.muted = true
+  video.playsInline = true
+  video.onended = () => {
+    i = (i + 1) % files.length
+    video.src = files[i]
+    video.play()
+  }
+  video.src = files[0]
+  await video.play()
 }
