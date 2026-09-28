@@ -2,6 +2,7 @@ import {
   FilesetResolver,
   HandLandmarker,
   PoseLandmarker,
+  type Landmark,
   type NormalizedLandmark,
 } from '@mediapipe/tasks-vision'
 
@@ -10,6 +11,8 @@ const BASE = import.meta.env.BASE_URL
 export interface Hand {
   /** 21 точка кисти в координатах кадра (0..1). */
   points: NormalizedLandmark[]
+  /** Те же точки в метрах относительно центра кисти: по ним считаем углы, они не зависят от удалённости. */
+  world: Landmark[]
   /** «Left» / «Right» с точки зрения самого человека. */
   side: 'Left' | 'Right'
   score: number
@@ -19,6 +22,9 @@ export interface Frame {
   hands: Hand[]
   /** 33 точки тела; нужны лицо и плечи, чтобы понимать, где рука относительно головы. */
   pose: NormalizedLandmark[] | null
+  /** Размер кадра в пикселях: нужен, чтобы расстояния по x и y были в одних единицах. */
+  width: number
+  height: number
   timestamp: number
 }
 
@@ -69,10 +75,16 @@ export class Tracker {
       const cat = h.handedness[i]?.[0]
       // Кадр с камеры не отзеркален, поэтому метки MediaPipe меняем местами.
       const side = cat?.categoryName === 'Left' ? 'Right' : 'Left'
-      return { points, side, score: cat?.score ?? 0 }
+      return { points, world: h.worldLandmarks[i], side, score: cat?.score ?? 0 }
     })
 
-    return { hands, pose: p.landmarks[0] ?? null, timestamp: ts }
+    return {
+      hands,
+      pose: p.landmarks[0] ?? null,
+      width: video.videoWidth,
+      height: video.videoHeight,
+      timestamp: ts,
+    }
   }
 }
 
