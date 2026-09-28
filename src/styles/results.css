@@ -1,0 +1,165 @@
+/* ---------- Итоги ---------- */
+
+.results__card {
+  display: grid;
+  gap: 16px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.results__kicker {
+  color: var(--muted);
+}
+
+.results__score {
+  font-size: clamp(56px, 10vw, 88px);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.results__score small {
+  font-size: 0.3em;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.results__stars span {
+  font-size: 34px;
+  color: var(--line);
+}
+
+.results__stars span.on {
+  color: #ffc84a;
+}
+
+.results__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.results__table th,
+.results__table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.results__table th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.results__table tr.is-missed td {
+  color: var(--muted);
+}
+
+.results__bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.records h2 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.records ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.records li.is-current {
+  color: var(--ok);
+}
+
+.again {
+  display: grid;
+  gap: 10px;
+  transition: opacity 0.4s;
+}
+
+.again.is-waiting {
+  opacity: 0.35;
+}
+
+/* ---------- Итоги: ошибки и конфетти ---------- */
+
+.results__progress {
+  color: var(--ok);
+}
+
+.mistakes h2 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.mistakes ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 22px;
+  color: #ffe2b0;
+}
+
+.mistakes li span {
+  color: var(--muted);
+}
+
+.confetti {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti i {
+  position: absolute;
+  top: -20px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: fall linear 1 forwards;
+}
+
+@keyframes fall {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0);
+  }
+  100% {
+    opacity: 0.9;
+    transform: translate(var(--drift), 105vh) rotate(var(--spin));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti {
+    display: none;
+  }
+}
+
+/* ---------- Телефон ---------- */
+
+@media (max-width: 820px) {
+  .results__bottom {
+    grid-template-columns: 1fr;
+  }
+
+  .results__table {
+    font-size: 13px;
+  }
+
+  .results__table th:nth-child(1),
+  .results__table td:nth-child(1) {
+    display: none;
+  }
+}

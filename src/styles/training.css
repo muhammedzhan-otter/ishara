@@ -1,0 +1,45 @@
+/* ---------- Обучение ---------- */
+
+.dots {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.dots i.on {
+  background: var(--accent);
+}
+
+.training__lead {
+  color: var(--muted);
+  font-size: 17px;
+}
+
+.training__card .sign-card {
+  padding: 18px 20px;
+}
+
+.training__card .sign-card__word {
+  font-size: 26px;
+}
+
+.training__card .sign-card__how {
+  font-size: 16px;
+}
+
+.training__card .sign-card__checks {
+  font-size: 16px;
+}
+
+.training__footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+}
