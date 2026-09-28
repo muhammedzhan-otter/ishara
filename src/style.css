@@ -199,16 +199,22 @@ button {
   transform-origin: center;
 }
 
-/* Дыхание и лёгкое покачивание головы. */
+/*
+ * Дыхание и лёгкое покачивание головы. --av-phase (отрицательная задержка) Avatar задаёт
+ * случайно, чтобы Айгерим на одной странице двигались и моргали не в такт.
+ * У головы и волос фаза обязана быть одна, иначе волосы отстанут от головы.
+ */
 
 .avatar .av-body {
   animation: av-breathe 5.2s ease-in-out infinite;
+  animation-delay: var(--av-phase, 0s);
 }
 
 .avatar .av-head,
 .avatar .av-hair-back {
   rotate: var(--av-tilt);
   animation: av-sway 9s ease-in-out infinite;
+  animation-delay: var(--av-phase, 0s);
 }
 
 @keyframes av-breathe {
@@ -234,7 +240,7 @@ button {
   }
 }
 
-/* Слушает: голова наклонена, брови чуть подняты. */
+/* Слушает: голова наклонена, брови чуть подняты (при радости выше, см. ниже у настроений). */
 
 .avatar.listening {
   --av-tilt: -4deg;
@@ -244,13 +250,14 @@ button {
   translate: 0 -1.6px;
 }
 
-/* Кивок: один раз, Avatar.nod() снимает класс и ставит заново. */
+/* Кивок: один раз, Avatar.nod() снимает класс и ставит заново. Покачивание не сбивается с фазы. */
 
 .avatar.nod .av-head,
 .avatar.nod .av-hair-back {
   animation:
     av-sway 9s ease-in-out infinite,
     av-nod 0.5s ease-in-out 1;
+  animation-delay: var(--av-phase, 0s), 0s;
 }
 
 @keyframes av-nod {
@@ -345,6 +352,11 @@ button {
   translate: 0 -0.6px;
 }
 
+/* Слушает и радуется: подъём бровей складывается с радостью. Правило ниже обоих, иначе радость перебивает. */
+.avatar.mood-happy.listening .av-brows {
+  translate: 0 -2.2px;
+}
+
 .avatar .av-blush {
   opacity: 0.75;
   transition: opacity 0.3s;
@@ -373,6 +385,7 @@ button {
 .avatar .av-lids {
   opacity: 0;
   animation: av-blink 8.4s steps(1, end) infinite;
+  animation-delay: var(--av-phase, 0s);
 }
 
 .avatar.blink .av-lids {
@@ -415,6 +428,10 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .avatar {
     transition: none;
+  }
+  /* Без плавного перехода наклон был бы рывком: «слушает» показывают только брови. */
+  .avatar.listening {
+    --av-tilt: 0deg;
   }
   .avatar .av-body,
   .avatar .av-head,

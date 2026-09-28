@@ -162,6 +162,8 @@ export class Avatar {
   constructor() {
     this.el = document.createElement('div')
     this.el.className = 'avatar mood-neutral'
+    // Своя фаза дыхания, покачивания и моргания: несколько Айгерим на странице не двигаются хором.
+    this.el.style.setProperty('--av-phase', `${(-Math.random() * 9).toFixed(2)}s`)
     this.el.innerHTML = SVG
     this.el.addEventListener('animationend', (e) => {
       if (e.animationName === 'av-nod') this.endNod()
