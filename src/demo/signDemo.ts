@@ -16,10 +16,11 @@ const PALM = 0.27 * SW
 const SHOULDER = { x: NOSE.x + 0.55 * SW, y: NOSE.y + 0.64 * SW }
 const ELBOW_DROP = 0.62 * SW
 
-const SKIN = '#f0c7a0'
-const SKIN_EDGE = '#c98f68'
-const SLEEVE = '#c9784c'
-const SLEEVE_EDGE = '#8f4f2c'
+// Цвета кожи и рукава как у рисунка Айгерим, чтобы рука не выделялась.
+const SKIN = '#eab38f'
+const SKIN_EDGE = '#bf7a5c'
+const SLEEVE = '#c4693f'
+const SLEEVE_EDGE = '#8e4527'
 
 /** Кадр для показа: от макушки до груди, чтобы жесты у груди помещались. */
 export const DEMO_CROP: [number, number, number, number] = [0, 45, 400, 225]

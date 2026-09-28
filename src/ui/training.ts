@@ -98,6 +98,7 @@ export class Training {
       const ok = await this.expect(id)
       if (this.closed) return
       if (ok) {
+        this.demo.figure.nod()
         this.card.celebrate()
         this.selfTile.dataset.said = SIGNS[id].word
         this.selfTile.classList.add('is-success')
@@ -115,6 +116,7 @@ export class Training {
   private async say(text: string) {
     // После «Пропустить» обучение закрыто: Айгерим не должна договаривать поверх встречи.
     if (this.closed) return
+    this.demo.figure.setListening(false)
     this.demo.figure.setSpeaking(true)
     await this.voice.say(text, 'partner')
     this.demo.figure.setSpeaking(false)
@@ -123,6 +125,8 @@ export class Training {
   private expect(id: SignId): Promise<boolean> {
     this.recognizer.reset()
     this.coach.reset(performance.now())
+    // Пока человек пробует, Айгерим слушает: голова чуть наклонена.
+    this.demo.figure.setListening(true)
     return new Promise((resolve) => {
       this.target = { id, resolve, started: performance.now() }
     })

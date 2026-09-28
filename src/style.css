@@ -158,88 +158,280 @@ button {
 
 /* ---------- Персонаж ---------- */
 
+/*
+ * Айгерим (src/ui/avatar.ts). Классы на обёртке .avatar: mood-neutral | mood-happy | mood-sad
+ * (без класса лицо нейтральное), speaking, listening, nod, blink (глаза закрыты принудительно)
+ * и still (все движения остановлены, для кадров и проверок).
+ *
+ * Слои глаз: .av-eyes (открытые), .av-squint (радость: нижнее веко дугой вверх),
+ * .av-droop (грусть: верхнее веко опускается на радужку), .av-lids (моргание, поверх всех).
+ * .av-dimples: ямочки у уголков рта, только при радости с закрытым ртом.
+ *
+ * Голова (.av-head) и волосы за ней (.av-hair-back) поворачиваются вокруг одной точки (200, 145),
+ * чуть выше шеи. Для этого в обеих группах лежит одинаковый невидимый прямоугольник
+ * 130..270 × 40..250: с transform-box: fill-box его центр и есть точка поворота.
+ */
+
+@property --av-tilt {
+  syntax: '<angle>';
+  inherits: true;
+  initial-value: 0deg;
+}
+
+.avatar {
+  --av-tilt: 0deg;
+  transition: --av-tilt 0.6s ease;
+}
+
 .avatar svg {
   display: block;
   width: 100%;
   height: 100%;
 }
 
-.avatar .av-eyes,
-.avatar .av-mouth-talk,
-.avatar .av-mouth,
+.avatar .av-body,
+.avatar .av-head,
+.avatar .av-hair-back,
+.avatar .av-brows,
 .avatar .av-brow-l,
-.avatar .av-brow-r,
-.avatar .av-head {
+.avatar .av-brow-r {
   transform-box: fill-box;
   transform-origin: center;
 }
 
-.avatar .av-eyes {
-  animation: blink 4.5s infinite;
+/* Дыхание и лёгкое покачивание головы. */
+
+.avatar .av-body {
+  animation: av-breathe 5.2s ease-in-out infinite;
 }
 
-.avatar .av-head {
-  animation: breathe 5s ease-in-out infinite;
+.avatar .av-head,
+.avatar .av-hair-back {
+  rotate: var(--av-tilt);
+  animation: av-sway 9s ease-in-out infinite;
 }
+
+@keyframes av-breathe {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  45% {
+    translate: 0 -1.1px;
+  }
+}
+
+@keyframes av-sway {
+  0%,
+  100% {
+    rotate: var(--av-tilt);
+  }
+  30% {
+    rotate: calc(var(--av-tilt) + 1deg);
+  }
+  65% {
+    rotate: calc(var(--av-tilt) - 0.7deg);
+  }
+}
+
+/* Слушает: голова наклонена, брови чуть подняты. */
+
+.avatar.listening {
+  --av-tilt: -4deg;
+}
+
+.avatar.listening .av-brows {
+  translate: 0 -1.6px;
+}
+
+/* Кивок: один раз, Avatar.nod() снимает класс и ставит заново. */
+
+.avatar.nod .av-head,
+.avatar.nod .av-hair-back {
+  animation:
+    av-sway 9s ease-in-out infinite,
+    av-nod 0.5s ease-in-out 1;
+}
+
+@keyframes av-nod {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  40% {
+    translate: 0 3.2px;
+  }
+  75% {
+    translate: 0 -0.6px;
+  }
+}
+
+/* Рот: при любом настроении и речи виден ровно один. */
 
 .avatar .av-mouth,
-.avatar .av-mouth-talk {
+.avatar .av-mouth-talk,
+.avatar .av-mouth-talk2 {
   opacity: 0;
 }
 
-.avatar.mood-neutral .av-mouth-neutral,
-.avatar.mood-happy .av-mouth-happy,
-.avatar.mood-sad .av-mouth-sad {
+/* Настроение без класса считается нейтральным. Пока говорит, закрытые рты скрыты. */
+.avatar:not(.speaking):not(.mood-happy):not(.mood-sad) .av-mouth-neutral,
+.avatar.mood-happy:not(.speaking) .av-mouth-happy,
+.avatar.mood-sad:not(.speaking) .av-mouth-sad {
   opacity: 1;
+}
+
+/* Два положения губ сменяются каждые 0,22 с. */
+.avatar.speaking .av-mouth-talk {
+  opacity: 1;
+  animation: av-talk-a 0.44s steps(1, end) infinite;
+}
+
+.avatar.speaking .av-mouth-talk2 {
+  animation: av-talk-b 0.44s steps(1, end) infinite;
+}
+
+@keyframes av-talk-a {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes av-talk-b {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Выражения лица. */
+
+.avatar .av-brows,
+.avatar .av-brow-l,
+.avatar .av-brow-r {
+  transition:
+    rotate 0.35s ease,
+    translate 0.35s ease;
+}
+
+/* Бровь поворачивается вокруг своего внешнего кончика: при грусти поднимается внутренний край. */
+.avatar .av-brow-l {
+  transform-origin: 1% 40%;
+}
+
+.avatar .av-brow-r {
+  transform-origin: 99% 40%;
+}
+
+.avatar .av-squint,
+.avatar .av-droop,
+.avatar .av-dimples {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.avatar.mood-happy .av-squint,
+.avatar.mood-sad .av-droop,
+.avatar.mood-happy:not(.speaking) .av-dimples {
+  opacity: 1;
+}
+
+.avatar.mood-happy .av-brows {
+  translate: 0 -0.6px;
+}
+
+.avatar .av-blush {
+  opacity: 0.75;
+  transition: opacity 0.3s;
+}
+
+.avatar.mood-happy .av-blush {
+  opacity: 1;
+}
+
+.avatar.mood-sad .av-blush {
+  opacity: 0.45;
 }
 
 .avatar.mood-sad .av-brow-l {
-  rotate: 12deg;
+  rotate: -15deg;
+  translate: 0 -0.5px;
 }
 
 .avatar.mood-sad .av-brow-r {
-  rotate: -12deg;
+  rotate: 15deg;
+  translate: 0 -0.5px;
 }
 
-.avatar.speaking .av-mouth {
+/* Моргание: каждые ~4 с, иногда дважды подряд. */
+
+.avatar .av-lids {
   opacity: 0;
+  animation: av-blink 8.4s steps(1, end) infinite;
 }
 
-.avatar.speaking .av-mouth-talk {
+.avatar.blink .av-lids {
   opacity: 1;
-  animation: talk 0.22s ease-in-out infinite alternate;
+  animation: none;
 }
 
-@keyframes blink {
-  0%,
-  95%,
-  100% {
-    scale: 1 1;
+@keyframes av-blink {
+  0% {
+    opacity: 0;
   }
-  97.5% {
-    scale: 1 0.1;
+  47% {
+    opacity: 1;
+  }
+  48.5% {
+    opacity: 0;
+  }
+  94% {
+    opacity: 1;
+  }
+  95.5% {
+    opacity: 0;
+  }
+  96.8% {
+    opacity: 1;
+  }
+  98.3% {
+    opacity: 0;
   }
 }
 
-@keyframes talk {
-  from {
-    scale: 1 0.25;
-  }
-  to {
-    scale: 1 1;
-  }
-}
+/* Стоп-кадр. */
 
-@keyframes breathe {
-  50% {
-    translate: 0 1.5px;
-  }
+.avatar.still,
+.avatar.still * {
+  animation: none !important;
+  transition: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .avatar .av-eyes,
-  .avatar .av-head {
+  .avatar {
+    transition: none;
+  }
+  .avatar .av-body,
+  .avatar .av-head,
+  .avatar .av-hair-back,
+  .avatar.nod .av-head,
+  .avatar.nod .av-hair-back,
+  .avatar .av-lids {
     animation: none;
+  }
+  .avatar .av-brows,
+  .avatar .av-brow-l,
+  .avatar .av-brow-r,
+  .avatar .av-squint,
+  .avatar .av-droop,
+  .avatar .av-dimples,
+  .avatar .av-blush {
+    transition: none;
   }
 }
 

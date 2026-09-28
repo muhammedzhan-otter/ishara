@@ -103,6 +103,8 @@ export class Meeting {
       answers.push({ question: step.say, expect: step.expect, sign, ms: performance.now() - started, fixes: this.coach.fixes, hints: [...this.coach.log] })
 
       if (sign) {
+        // Кивает: жест понят. Ответит, когда прозвучит перевод.
+        this.partner.figure.nod()
         this.cards.find((c) => c.id === sign)?.celebrate()
         await this.userSay(SIGNS[sign].word)
         const react = step.react[sign]!
@@ -117,6 +119,7 @@ export class Meeting {
   }
 
   private async partnerSay(text: string, mood: Mood) {
+    this.partner.figure.setListening(false)
     this.partner.figure.setMood(mood)
     this.partner.figure.setSpeaking(true)
     this.partnerTile.classList.add('is-speaking')
@@ -152,6 +155,7 @@ export class Meeting {
     this.recognizer.reset()
     this.others.reset()
     this.coach.reset(performance.now())
+    this.partner.figure.setListening(true)
     return new Promise((resolve) => {
       this.listening = { expect, resolve, started: performance.now() }
     })
