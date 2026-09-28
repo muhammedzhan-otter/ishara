@@ -73,8 +73,9 @@ export class Tracker {
 
     const hands: Hand[] = h.landmarks.map((points, i) => {
       const cat = h.handedness[i]?.[0]
-      // Кадр с камеры не отзеркален, поэтому метки MediaPipe меняем местами.
-      const side = cat?.categoryName === 'Left' ? 'Right' : 'Left'
+      // Проверено на словарных видео: MediaPipe Tasks для неотзеркаленного кадра
+      // сразу отдаёт руку с точки зрения человека, менять метки не нужно.
+      const side = cat?.categoryName === 'Left' ? 'Left' : 'Right'
       return { points, world: h.worldLandmarks[i], side, score: cat?.score ?? 0 }
     })
 

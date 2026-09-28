@@ -66,6 +66,12 @@ export interface HandFeatures {
   palm: { toCamera: number; up: number; right: number }
   /** Куда направлены пальцы: up 1 вверх, right 1 вправо по экрану. */
   pointing: { up: number; right: number; toCamera: number }
+  /** Куда смотрит большой палец (от основания к кончику): up 1 вверх. */
+  thumbDir: { up: number; right: number }
+  /** Насколько кончик большого пальца выше костяшки указательного, в долях ладони. */
+  thumbAbove: number
+  /** Средняя разогнутость четырёх пальцев без большого. */
+  open: number
   /** Центр ладони и кончик указательного пальца в координатах тела (если тело видно). */
   palmPos: Vec2 | null
   tipPos: Vec2 | null
@@ -196,6 +202,10 @@ export class FeatureExtractor {
     // В MediaPipe z растёт от камеры, y вниз, x по неотзеркаленному кадру.
     const palm = { toCamera: s('palm.z', -n.z), up: s('palm.y', -n.y), right: s('palm.x', -n.x) }
     const pointing = { up: s('dir.y', -dir.y), right: s('dir.x', -dir.x), toCamera: s('dir.z', -dir.z) }
+    const th = unit(sub(w[4], w[2]))
+    const thumbDir = { up: s('thumb.y', -th.y), right: s('thumb.x', -th.x) }
+    const thumbAbove = s('thumbAbove', (w[5].y - w[4].y) / palmSize)
+    const open = (ext.index + ext.middle + ext.ring + ext.pinky) / 4
 
     const W = frame.width
     const H = frame.height
@@ -218,7 +228,7 @@ export class FeatureExtractor {
       region = regionOf(palmPos, body)
     }
 
-    return { side: h.side, ext, thumbOut, pinch, palm, pointing, palmPos, tipPos, region, screen }
+    return { side: h.side, ext, thumbOut, pinch, palm, pointing, thumbDir, thumbAbove, open, palmPos, tipPos, region, screen }
   }
 }
 
