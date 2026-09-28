@@ -82,7 +82,7 @@
   --fs-h2: 22px;
   /* Субтитры: 22 px на телефоне, 30 px на широком экране. */
   --fs-caption: clamp(22px, 1.25vw + 12px, 30px);
-  /* Подсказка на видео: от ширины плитки (плитка — контейнер), но не меньше 15 px. */
+  /* Подсказка на видео: от ширины плитки (плитка служит контейнером), но не меньше 15 px. */
   --fs-hint: clamp(15px, 2.6cqi, 20px);
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -417,7 +417,7 @@ button {
 }
 
 /*
- * Плитка — контейнер: подсказка и слово успеха меряют свой размер от её ширины (cqi).
+ * Плитка служит контейнером: подсказка и слово успеха меряют свой размер от её ширины (cqi).
  * Кольцо состояния рисуется тенью, а не рамкой: вёрстка не прыгает при смене состояния.
  */
 .tile {
@@ -486,7 +486,9 @@ button {
   top: 12px;
   right: 12px;
   z-index: 3;
-  background: rgb(14 18 38 / 82%);
+  /* Почти непрозрачный фон и светлее текст: чип читается и на белой стене класса. */
+  background: rgb(14 18 38 / 94%);
+  color: #b3c0ff;
   opacity: 0;
   translate: 0 -4px;
   transition:
@@ -610,21 +612,24 @@ button {
 /*
  * Разметка (src/ui/hintBar.ts):
  * .hint[data-kind] > .hint__icon + .hint__body > .hint__kicker + .hint__text > .hint__sign
- * data-kind: info (синий, без метки), fix (янтарный, «Поправь»), near (янтарный, «Другой жест»).
+ * data-kind: info (синий, без метки), fix (янтарный, «Поправь»), near (янтарный, «Это «X», а нужен «Y»»).
+ * Полоса прижата к левому нижнему углу и не шире трёх четвертей плитки: видео зеркальное,
+ * правая рука человека справа, и её жест остаётся открытым. Метка стоит в строке текста,
+ * поэтому обычная подсказка занимает одну-две строки.
  */
 .hint {
   position: absolute;
-  left: 50%;
+  left: 12px;
   bottom: 12px;
   z-index: 3;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: max-content;
-  max-width: calc(100% - 24px);
-  padding: 8px 18px 8px 8px;
-  border-radius: var(--r-lg);
-  background: rgb(10 13 24 / 90%);
+  max-width: min(calc(100% - 24px), max(72%, 320px));
+  padding: 6px 16px 6px 6px;
+  border-radius: var(--r-md);
+  background: rgb(10 13 24 / 84%);
   box-shadow:
     inset 0 0 0 1.5px var(--blue-line),
     0 14px 30px -12px rgb(0 0 0 / 70%);
@@ -633,7 +638,7 @@ button {
   font-weight: 500;
   line-height: 1.3;
   opacity: 0;
-  translate: -50% 10px;
+  translate: 0 10px;
   transition:
     opacity 0.2s,
     translate 0.25s var(--ease-out);
@@ -642,14 +647,14 @@ button {
 
 .hint.is-visible {
   opacity: 1;
-  translate: -50% 0;
+  translate: 0 0;
 }
 
 .hint__icon {
   display: grid;
   place-items: center;
-  width: 1.9em;
-  height: 1.9em;
+  width: 1.75em;
+  height: 1.75em;
   flex: none;
   border-radius: 50%;
   background: var(--blue-soft);
@@ -663,17 +668,27 @@ button {
 }
 
 .hint__body {
-  display: grid;
+  display: block;
   min-width: 0;
 }
 
 .hint__kicker {
+  margin-right: 0.6em;
   color: var(--amber);
   font-size: var(--fs-label);
   font-weight: 700;
   letter-spacing: 0.06em;
   line-height: 1.3;
   text-transform: uppercase;
+}
+
+/* «Это «Хорошо», а нужен «Привет»»: целая фраза, отдельной строкой над исправлением. */
+.hint.has-long-kicker .hint__kicker {
+  display: block;
+  margin: 0;
+  font-size: max(var(--fs-label), 0.8em);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .hint__kicker:empty {
@@ -695,7 +710,7 @@ button {
 
 .hint[data-kind='fix'],
 .hint[data-kind='near'] {
-  background: rgb(30 22 8 / 92%);
+  background: rgb(30 22 8 / 86%);
   box-shadow:
     inset 0 0 0 1.5px var(--amber-line),
     0 14px 30px -12px rgb(0 0 0 / 70%);
@@ -724,6 +739,36 @@ button {
     inset 0 0 0 1px var(--line);
   font-size: var(--fs-caption);
   line-height: 1.3;
+}
+
+/* Хвостик указывает на плитку того, кто говорит: Айгерим слева, человек справа. */
+.caption {
+  position: relative;
+}
+
+.caption::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 50px;
+  width: 14px;
+  height: 14px;
+  rotate: 45deg;
+  border-radius: 3px 0 0;
+  background: var(--surface-1);
+  box-shadow: inset 1px 1px 0 var(--line);
+  transition:
+    left 0.3s var(--ease-out),
+    opacity 0.2s;
+}
+
+/* Вторая плитка начинается на середине сцены плюс половина промежутка между плитками. */
+.caption[data-who='user']::before {
+  left: calc(50% + 8px + 42px);
+}
+
+.caption[data-who='none']::before {
+  opacity: 0;
 }
 
 .caption__face {
@@ -792,10 +837,13 @@ button {
 
 /*
  * .sign-card > .sign-card__demo? + .sign-card__body >
- *   .sign-card__word + .sign-card__how + .sign-card__meter (.sign-card__meter-label + .sign-card__bar > i) + .sign-card__checks
- * Состояния: .is-focused (ближе всего, синий), .is-done (получилось, зелёный),
- * .is-dim (другие варианты после ответа), .is-muted (предпросмотр, пока Айгерим говорит).
+ *   .sign-card__word (.sign-card__name + значок?) + .sign-card__how
+ *   + .sign-card__meter (.sign-card__meter-label + .sign-card__bar > i) + .sign-card__checks + .sign-card__wait
+ * Состояния: .is-focused (ближе всего, синий), .is-fixing (на видео «поправь» про этот жест),
+ * .is-done (получилось, зелёный), .is-dim (другие варианты после ответа),
+ * .is-muted (предпросмотр, пока Айгерим говорит: приглушены показ и полоса, текст читается).
  * .sign-card--wide: карточка одна на экране, чек-лист справа отдельной колонкой.
+ * Ход человека отмечает класс .is-trying на обёртке карточек (обучение и встреча).
  */
 .sign-card {
   container: sign-card / inline-size;
@@ -884,7 +932,10 @@ button {
   background: var(--green);
 }
 
-/* Чек-лист условий: выполнено зелёным, текущее янтарным (то же, что в подсказке на видео), остальные серые. */
+/*
+ * Чек-лист условий: выполнено зелёным, остальные серые. Первое невыполненное синее (is-next, «твой ход»),
+ * а янтарное (is-now) только пока на видео подсказка «Поправь» с тем же текстом.
+ */
 .sign-card__checks {
   display: grid;
   gap: 8px;
@@ -927,6 +978,10 @@ button {
   box-shadow: none;
 }
 
+.sign-card__checks li.is-next::before {
+  box-shadow: inset 0 0 0 2px var(--blue);
+}
+
 .sign-card__checks li.is-now {
   color: var(--amber-text);
   font-weight: 600;
@@ -954,16 +1009,46 @@ button {
 }
 
 .sign-card.is-dim {
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
-.sign-card.is-muted {
-  opacity: 0.55;
+.sign-card.is-muted .sign-card__demo,
+.sign-card.is-muted .sign-card__bar {
+  opacity: 0.45;
   filter: saturate(0.6);
 }
 
 .sign-card.is-muted .sign-card__bar i {
   width: 0 !important;
+}
+
+/*
+ * Пока руки не видно, на месте чек-листа тихая строка, что сюда смотреть: «дослушай» или
+ * «подними руку в кадр» (ход человека). Только у широкой карточки с колонкой справа, см. ниже.
+ */
+.sign-card__wait {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fs-small);
+  line-height: 1.45;
+}
+
+.sign-card__wait .icon {
+  width: 24px;
+  height: 24px;
+  color: var(--text-3);
+}
+
+.sign-card__wait-turn,
+.is-trying .sign-card__wait-listen {
+  display: none;
+}
+
+.is-trying .sign-card__wait-turn {
+  display: inline;
 }
 
 /*
@@ -1067,13 +1152,18 @@ button {
     align-self: end;
   }
 
-  .sign-card--wide .sign-card__checks {
+  .sign-card--wide .sign-card__checks,
+  .sign-card--wide .sign-card__wait {
     grid-area: checks;
     align-self: center;
     gap: 10px;
     margin: 0;
     padding: 4px 0 4px 32px;
     border-left: 1px solid var(--line);
+  }
+
+  .sign-card--wide:not(.is-done):not(.is-dim):not(.is-fixing) .sign-card__checks:empty + .sign-card__wait {
+    display: flex;
   }
 }
 
@@ -1392,10 +1482,52 @@ button {
 
 /* ---------- Телефон ---------- */
 
+/* Низкое окно ноутбука (1366×768, 1280×720, панели браузера): звонок плотнее, субтитры чуть мельче. */
+@media (min-width: 821px) and (max-height: 820px) {
+  .call {
+    gap: 12px;
+    padding-top: 12px;
+  }
+
+  .call .caption {
+    min-height: 60px;
+    padding-block: 8px;
+    font-size: clamp(22px, 0.9vw + 12px, 26px);
+  }
+
+  .call .caption__face {
+    width: 40px;
+    height: 40px;
+  }
+}
+
 @media (max-width: 820px) {
   .stage {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  /*
+   * Звонок на телефоне и планшете стоя: плитки друг под другом (16:9 и 4:3, вместе 1.3125 ширины).
+   * Ширина сцены от высоты окна, чтобы без прокрутки были видны обе плитки, субтитры, слово жеста,
+   * полоса «насколько похоже» и первый пункт чек-листа: руки заняты жестом, прокрутить нельзя.
+   * --call-rest: высота всего остального, у обучения и встречи своя (training.css, meeting.css).
+   */
+  .call {
+    gap: 10px;
+    padding-top: 12px;
+  }
+
+  .call .stage {
+    width: 100%;
+    max-width: max(240px, calc((100svh - var(--call-rest, 420px)) / 1.3125));
+    margin-inline: auto;
+    gap: 10px;
+  }
+
+  /* Плитки друг под другом: хвостик субтитров указал бы не туда. */
+  .caption::before {
+    display: none;
   }
 
   .stage .tile--partner {
@@ -1424,10 +1556,11 @@ button {
   }
 
   .hint {
-    bottom: 10px;
+    left: 8px;
+    bottom: 8px;
     max-width: calc(100% - 16px);
-    padding: 7px 14px 7px 7px;
-    gap: 10px;
+    padding: 5px 12px 5px 5px;
+    gap: 8px;
   }
 
   .caption {
@@ -1449,13 +1582,8 @@ button {
 
 @media (max-width: 560px) {
   .sign-card {
-    grid-template-columns: 96px minmax(0, 1fr);
     gap: 12px;
     padding: 12px;
-  }
-
-  .sign-card--wide:has(.sign-card__demo) {
-    grid-template-columns: 96px minmax(0, 1fr);
   }
 
   .sign-card__word {
@@ -1466,55 +1594,79 @@ button {
     font-size: 26px;
   }
 
-  /* Имя говорящего над репликой мелко: сама реплика остаётся крупной и занимает всю ширину. */
+  .sign-card--wide .sign-card__how {
+    font-size: var(--fs-small);
+  }
+
+  /* «Насколько похоже» слева от полосы, в одну строку: карточка ниже, полоса видна без прокрутки. */
+  .sign-card--wide .sign-card__meter {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 12px;
+  }
+
+  /* Значок говорящего у первой строки реплики. Имя в той же строке: так субтитры на строку ниже. */
   .caption {
     align-items: flex-start;
   }
 
-  .caption__who {
-    display: block;
-    margin: 0 0 2px;
-    font-size: var(--fs-small);
-    line-height: 1.3;
-  }
-
-  /* На телефоне и у одной карточки с показом чек-лист уходит под показ, на всю ширину. */
+  /*
+   * Карточка с показом на телефоне: миниатюра рядом со словом, описание, полоса и чек-лист
+   * на всю ширину под ними. Так описание занимает две-три строки, а не пять в узкой колонке.
+   */
+  .sign-card:has(.sign-card__demo):not(.sign-card--wide),
   .sign-card--wide:has(.sign-card__demo) {
-    grid-template-rows: auto auto 1fr auto;
+    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-rows: auto;
     grid-template-areas:
       'demo word'
-      'demo how'
-      'demo meter'
+      'how how'
+      'meter meter'
       'checks checks';
-    row-gap: 6px;
+    row-gap: 8px;
   }
 
-  .sign-card--wide:has(.sign-card__demo) .sign-card__body {
+  .sign-card:has(.sign-card__demo) .sign-card__body {
     display: contents;
   }
 
-  .sign-card--wide:has(.sign-card__demo) .sign-card__demo {
+  .sign-card:has(.sign-card__demo) .sign-card__demo {
     grid-area: demo;
+    border-radius: var(--r-xs);
   }
 
-  .sign-card--wide:has(.sign-card__demo) .sign-card__word {
+  .sign-card:has(.sign-card__demo) .sign-card__word {
     grid-area: word;
+    align-self: center;
+    padding-top: 0;
   }
 
-  .sign-card--wide:has(.sign-card__demo) .sign-card__how {
+  .sign-card:has(.sign-card__demo) .sign-card__how {
     grid-area: how;
   }
 
-  .sign-card--wide:has(.sign-card__demo) .sign-card__meter {
+  .sign-card:has(.sign-card__demo) .sign-card__meter {
     grid-area: meter;
-    align-self: end;
+    align-self: start;
+    margin-top: 0;
   }
 
-  .sign-card--wide:has(.sign-card__demo) .sign-card__checks {
+  .sign-card:has(.sign-card__demo) .sign-card__checks {
     grid-area: checks;
-    margin-top: 8px;
+    margin-top: 2px;
     padding-top: 12px;
     border-top: 1px solid var(--line);
+  }
+}
+
+/* Узкий телефон (360 px): без значка говорящего реплика короче на строку, имя в цвете остаётся. */
+@media (max-width: 400px) {
+  .caption__face {
+    display: none;
+  }
+
+  .caption {
+    padding-left: 14px;
   }
 }
 

@@ -43,6 +43,12 @@ export class Coach {
   private lastBody = 0
   private stepStart = 0
   private near: { id: SignId; t: number } | null = null
+  /** Служебная надпись, когда руки долго нет в кадре: на каждом экране своя. */
+  private readonly noHandText: string
+
+  constructor(noHandText = 'Подними руку в кадр, чтобы ответить жестом') {
+    this.noHandText = noHandText
+  }
 
   reset(t: number) {
     this.fixes = 0
@@ -88,7 +94,7 @@ export class Coach {
       return { kind: 'info', text: 'Отодвинься немного: для этого жеста нужно видеть лицо и плечи' }
     }
     if (!state.handVisible) {
-      return t - this.lastHand > NO_HAND_MS ? { kind: 'info', text: 'Подними руку в кадр, чтобы ответить жестом' } : null
+      return t - this.lastHand > NO_HAND_MS ? { kind: 'info', text: this.noHandText } : null
     }
     const edge = f.hands.find((h) => h.screen.x < 0.06 || h.screen.x > 0.94 || h.screen.y > 0.94)
     // Это про посадку перед камерой, а не ошибка жеста: в «над чем поработать» не попадает.

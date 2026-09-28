@@ -61,6 +61,8 @@ export class SignDemo {
   private frozen: number | null = null
   private queue: SignId[] = []
   private raf = 0
+  private destroyed = false
+  private readonly resize: ResizeObserver
   /** Область SVG, которую видно в плитке: [x, y, ширина, высота]. */
   private readonly crop: [number, number, number, number]
 
@@ -72,8 +74,17 @@ export class SignDemo {
     this.avatar.el.querySelector('svg')!.setAttribute('viewBox', crop.join(' '))
     this.canvas.className = 'sign-demo__canvas'
     this.el.append(this.avatar.el, this.canvas)
+    // Стоп-кадр рисуется один раз и заново только при смене размера: восемь миниатюр словаря
+    // не должны перерисовываться 60 раз в секунду на школьном ноутбуке.
+    this.resize = new ResizeObserver(() => this.wake())
+    this.resize.observe(this.canvas)
     if (sign) this.play(sign)
-    this.raf = requestAnimationFrame(this.frame)
+    this.wake()
+  }
+
+  /** Запустить отрисовку, если она остановлена (стоп-кадр уже нарисован или руки нет). */
+  private wake() {
+    if (!this.raf && !this.destroyed) this.raf = requestAnimationFrame(this.frame)
   }
 
   play(sign: SignId) {
@@ -91,17 +102,20 @@ export class SignDemo {
   stop() {
     this.queue = []
     this.sign = null
+    this.wake()
   }
 
   private show(sign: SignId) {
     this.sign = sign
     this.shapes = DEMOS[sign].keys.map((k) => handPoints(k.shape))
     this.started = performance.now()
+    this.wake()
   }
 
-  /** Остановить показ на моменте t секунд (для проверки кадров); null продолжает анимацию. */
+  /** Остановить показ на моменте t секунд (стоп-кадр миниатюры); null продолжает анимацию. */
   seek(t: number | null) {
     this.frozen = t
+    this.wake()
   }
 
   get figure(): Avatar {
@@ -109,11 +123,14 @@ export class SignDemo {
   }
 
   private frame = (now: number) => {
-    this.raf = requestAnimationFrame(this.frame)
+    this.raf = 0
     const { canvas, ctx, crop } = this
     const w = canvas.clientWidth
     const hgt = canvas.clientHeight
+    // Пока canvas без размера (ещё не на странице), ждём: ResizeObserver разбудит.
     if (!w || !hgt) return
+    // Анимация идёт, только пока есть что двигать: без руки и на стоп-кадре кадр один.
+    if (this.sign && this.frozen === null) this.raf = requestAnimationFrame(this.frame)
     const dpr = Math.min(2, window.devicePixelRatio || 1)
     const W = Math.round(w * dpr)
     const H = Math.round(hgt * dpr)
@@ -212,6 +229,9 @@ export class SignDemo {
   }
 
   destroy() {
+    this.destroyed = true
     cancelAnimationFrame(this.raf)
+    this.raf = 0
+    this.resize.disconnect()
   }
 }

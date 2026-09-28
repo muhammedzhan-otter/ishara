@@ -1,14 +1,452 @@
 /* ---------- Встреча ---------- */
 
-/* Раскладка экрана-звонка (.call), верхняя панель, плитки и субтитры общие: styles/base.css. */
+/*
+ * Раскладка экрана-звонка (.call), плитки с кольцом состояния, подсказка, слово успеха,
+ * субтитры и карточка жеста общие: styles/base.css. Здесь только то, что есть у встречи:
+ * прогресс по вопросам и таймер в шапке, хвостик субтитров, заголовок и сетка карточек ответа.
+ */
 
-.answer__title {
-  margin-bottom: 10px;
-  color: var(--muted);
+/* ---------- Верхняя панель: заголовок, «Вопрос N из 5», пять сегментов, таймер ---------- */
+
+.meeting .topbar {
+  flex-wrap: nowrap;
+  gap: 14px;
 }
 
-.answer__cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+.meeting__head {
+  display: inline-flex;
+  align-items: center;
   gap: 12px;
+  min-width: 0;
+  flex: none;
+}
+
+.meeting .topbar__rec {
+  box-shadow: 0 0 0 4px rgb(255 90 106 / 16%);
+}
+
+.meeting .topbar__title {
+  font-size: 22px;
+  white-space: nowrap;
+}
+
+.meeting .topbar__step {
+  flex: none;
+  padding: 3px 12px;
+  font-size: var(--fs-label);
+  font-weight: 650;
+  line-height: 20px;
+}
+
+/* Сегменты: пройденные зелёные, пропущенные серые, текущий синий и заполняется по ходу вопроса. */
+.meeting__progress {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.meeting__progress i {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: rgb(255 255 255 / 10%);
+  transition:
+    background-color 0.3s,
+    box-shadow 0.3s;
+}
+
+.meeting__progress i::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: inherit;
+  background: var(--blue);
+  transition: width 0.6s var(--ease-out);
+}
+
+.meeting__progress i.is-now {
+  background: rgb(129 152 255 / 22%);
+  box-shadow: 0 0 0 3px rgb(129 152 255 / 16%);
+}
+
+.meeting__progress i.is-now[data-phase='listen']::after {
+  width: 35%;
+}
+
+.meeting__progress i.is-now[data-phase='answer']::after {
+  width: 70%;
+}
+
+.meeting__progress i.is-done {
+  background: var(--green);
+}
+
+.meeting__progress i.is-skip {
+  background: rgb(255 255 255 / 30%);
+}
+
+.meeting .topbar__timer {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin-left: 0;
+  padding: 5px 14px 5px 12px;
+  color: var(--text);
+}
+
+.meeting .topbar__timer .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-2);
+}
+
+/* ---------- Субтитры (хвостик к говорящему общий: styles/base.css) ---------- */
+
+@media (min-height: 821px) {
+  .meeting .caption {
+    min-height: 72px;
+  }
+}
+
+/*
+ * Школьные ноутбуки 1366×768, 1280×720 и те же экраны за вычетом панелей браузера (1366×657):
+ * плитки и субтитры сужаются по высоте окна, чтобы карточки ответа с чек-листом условий
+ * помещались без прокрутки (руки заняты жестом, прокрутить нельзя). Карточки остаются
+ * во всю ширину: три варианта в ряд, и текст рядом с показом не переносится лишний раз.
+ * 480px: всё, кроме плиток: шапка, отступы, субтитры, заголовок ответа и три карточки с чек-листом.
+ */
+@media (min-width: 821px) {
+  .meeting .stage,
+  .meeting .caption {
+    width: 100%;
+    max-width: max(640px, calc((100svh - 480px) * 32 / 9 + 16px));
+    margin-inline: auto;
+  }
+}
+
+/* ---------- Ответ: заголовок и карточки ---------- */
+
+.meeting .answer {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+@media (max-height: 820px) {
+  .meeting .answer {
+    gap: 10px;
+    margin-top: 0;
+  }
+}
+
+/* Значок у первой строки; текст с пояснением переносятся вместе, значок не отрывается. */
+.meeting .answer__title {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 28px;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.meeting .answer__title .icon {
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  color: var(--blue);
+}
+
+.meeting .answer__line {
+  min-width: 0;
+}
+
+.meeting .answer__note {
+  margin-left: 10px;
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: var(--fs-small);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* Айгерим ещё спрашивает: заголовок тише, карточки приглушены (.is-muted ставит meeting.ts). */
+.meeting .answer__title[data-phase='listen'] {
+  color: var(--text-2);
+}
+
+.meeting .answer__title[data-phase='listen'] .icon {
+  color: var(--text-3);
+}
+
+.meeting .answer__title[data-phase='done'] .icon {
+  color: var(--green);
+}
+
+.meeting .answer__title[data-phase='done'] .answer__text {
+  color: var(--green);
+}
+
+.meeting .answer__title[data-phase='skip'] {
+  color: var(--text-2);
+}
+
+.meeting .answer__title[data-phase='skip'] .icon {
+  color: var(--text-3);
+}
+
+/* Несколько вариантов: колонки не уже 300 px, иначе текст рядом с показом не помещается. */
+.meeting .answer__cards {
+  container: answers / inline-size;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+/*
+ * Карточки в ряд выровнены по строкам (subgrid): слово, описание, полоса «насколько похоже»
+ * и чек-лист начинаются на одной высоте во всех карточках, низ у карточек общий.
+ * Карточка-контейнер (container-type) отключила бы subgrid: контейнером здесь служит ряд
+ * карточек (answers), и два правила по ширине карточки переписаны через его ширину.
+ */
+@supports (grid-template-rows: subgrid) {
+  @media (min-width: 821px) {
+    .meeting .answer__cards.is-multi .sign-card {
+      container-type: normal;
+      align-self: stretch;
+      grid-row: span 4;
+      grid-template-rows: subgrid;
+      row-gap: 6px;
+    }
+
+    /* Два варианта, каждая карточка шире 560 px: чек-лист в две колонки. */
+    @container answers (min-width: 1136px) {
+      .meeting .answer__cards.is-multi:not(:has(> :nth-child(3))) .sign-card__checks {
+        grid-template-columns: 1fr 1fr;
+        column-gap: 20px;
+      }
+    }
+
+    /* Три варианта, карточка уже 300 px: чип «Ближе всего» не помещается рядом со словом. */
+    @container answers (max-width: 948px) {
+      .meeting .answer__cards.is-multi:has(> :nth-child(3)) .sign-card.is-focused:not(.is-done) .sign-card__word::after {
+        display: none;
+      }
+    }
+  }
+}
+
+/* Несколько вариантов: чек-лист плотнее, чтобы он помещался по высоте и на низком окне ноутбука. */
+.meeting .answer__cards.is-multi .sign-card__checks {
+  gap: 5px;
+  line-height: 1.35;
+}
+
+.meeting .answer__cards.is-multi .sign-card__checks li::before {
+  width: 18px;
+  height: 18px;
+  background-size: 12px;
+}
+
+/* Три варианта в ряд на ноутбуке с узким экраном: миниатюра меньше, тексту больше места. */
+@media (min-width: 821px) {
+  @container answers (max-width: 1240px) {
+    .meeting .answer__cards.is-multi .sign-card {
+      grid-template-columns: 100px minmax(0, 1fr);
+      column-gap: 14px;
+    }
+  }
+}
+
+/* Чип рядом со словом: «Ближе всего» у лучшего из нескольких вариантов, «Получилось» у ответа. */
+.meeting .sign-card__word {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+}
+
+.meeting .answer__cards.is-multi .sign-card.is-focused:not(.is-done) .sign-card__word::after,
+.meeting .sign-card.is-done .sign-card__word::after {
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-ui);
+  font-size: var(--fs-label);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 20px;
+  white-space: nowrap;
+  animation: fade-in 0.25s ease-out;
+}
+
+.meeting .answer__cards.is-multi .sign-card.is-focused:not(.is-done) .sign-card__word::after {
+  content: 'Ближе всего';
+  background: var(--blue-soft);
+  box-shadow: inset 0 0 0 1px var(--blue-line);
+  color: var(--blue);
+}
+
+/*
+ * В узкой карточке чип не помещается рядом со словом и ушёл бы на новую строку. Лучший вариант
+ * меняется часто, и карточка прыгала бы по высоте, поэтому там его отмечает только синяя рамка.
+ */
+@container sign-card (max-width: 300px) {
+  .meeting .answer__cards.is-multi .sign-card.is-focused:not(.is-done) .sign-card__word::after {
+    display: none;
+  }
+}
+
+.meeting .sign-card.is-done .sign-card__word::after {
+  content: 'Получилось';
+  padding-left: 28px;
+  background: var(--green-soft)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233ddc97' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E")
+    10px 50% / 13px no-repeat;
+  box-shadow: inset 0 0 0 1px var(--green-line);
+  color: var(--green);
+}
+
+/* ---------- Телефон и узкий планшет ---------- */
+
+@media (max-width: 820px) {
+  /* Под плитками субтитры, заголовок ответа и карточка до первого пункта чек-листа (base.css). */
+  .meeting {
+    --call-rest: 450px;
+  }
+
+  /* Первая строка: заголовок и таймер. Вторая: «Вопрос N из 5» и сегменты на всю ширину. */
+  .meeting .topbar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'head head timer'
+      'step progress progress';
+    gap: 10px 12px;
+    align-items: center;
+  }
+
+  .meeting__head {
+    grid-area: head;
+    gap: 10px;
+  }
+
+  .meeting .topbar__title {
+    overflow: hidden;
+    font-size: 19px;
+    text-overflow: ellipsis;
+  }
+
+  .meeting .topbar__step {
+    grid-area: step;
+  }
+
+  .meeting__progress {
+    grid-area: progress;
+    max-width: none;
+    margin: 0;
+  }
+
+  .meeting .topbar__timer {
+    grid-area: timer;
+  }
+
+  .meeting .caption {
+    min-height: 60px;
+  }
+
+  .meeting .answer__title {
+    font-size: 17px;
+  }
+
+  .meeting .answer__cards {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /*
+   * Карточки друг под другом: после ответа понятый жест поднимается наверх,
+   * остальные сжимаются до строки с миниатюрой и словом, чтобы ответ был виден без прокрутки.
+   */
+  .meeting .answer__cards .sign-card.is-done {
+    order: -1;
+  }
+
+  .meeting .answer__cards .sign-card.is-dim {
+    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas: 'demo word';
+    align-items: center;
+    padding: 8px 12px 8px 8px;
+  }
+
+  .meeting .answer__cards .sign-card.is-dim .sign-card__demo {
+    border-radius: var(--r-xs);
+  }
+
+  .meeting .answer__cards .sign-card.is-dim .sign-card__how,
+  .meeting .answer__cards .sign-card.is-dim .sign-card__meter,
+  .meeting .answer__cards .sign-card.is-dim .sign-card__checks {
+    display: none;
+  }
+
+  .meeting .answer__cards .sign-card.is-dim .sign-card__word {
+    padding-top: 0;
+    font-size: 19px;
+  }
+}
+
+/* Планшет стоя: карточка широкая, с чек-листом справа, и выше, чем на телефоне. */
+@media (min-width: 561px) and (max-width: 820px) {
+  .meeting {
+    --call-rest: 560px;
+  }
+}
+
+@media (max-width: 560px) {
+  /*
+   * Телефон: шапка в одну строку (точка записи, «Вопрос N из 5», таймер) и тонкие сегменты под ней.
+   * Название встречи остаётся заголовком для экранного диктора: с кем встреча, видно по плитке.
+   */
+  .meeting .topbar {
+    grid-template-areas:
+      'head step timer'
+      'progress progress progress';
+    gap: 8px 10px;
+    min-height: 0;
+  }
+
+  .meeting .topbar__title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .meeting .topbar__step {
+    justify-self: start;
+    font-size: var(--fs-small);
+  }
+
+  .meeting__progress i {
+    height: 6px;
+  }
+
+  .meeting .answer__note {
+    display: block;
+    margin-left: 0;
+  }
 }

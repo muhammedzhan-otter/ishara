@@ -16,7 +16,7 @@ export async function startCamera(video: HTMLVideoElement): Promise<void> {
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
     throw new CameraError(
       'Браузер не даёт доступ к камере',
-      'Откройте приложение по https:// или через localhost',
+      'Открой приложение по https:// или через localhost',
     )
   }
 
@@ -31,16 +31,16 @@ export async function startCamera(video: HTMLVideoElement): Promise<void> {
     if (name === 'NotAllowedError') {
       throw new CameraError(
         'Нет разрешения на камеру',
-        'Разрешите доступ к камере в адресной строке браузера и обновите страницу',
+        'Разреши доступ к камере в адресной строке браузера и обнови страницу',
       )
     }
     if (name === 'NotFoundError' || name === 'OverconstrainedError') {
-      throw new CameraError('Камера не найдена', 'Подключите веб-камеру и обновите страницу')
+      throw new CameraError('Камера не найдена', 'Подключи веб-камеру и обнови страницу')
     }
     if (name === 'NotReadableError') {
       throw new CameraError(
         'Камера занята другим приложением',
-        'Закройте Zoom, Teams или другую вкладку с камерой и обновите страницу',
+        'Закрой Zoom, Teams или другую вкладку с камерой и обнови страницу',
       )
     }
     throw new CameraError('Не удалось включить камеру', String(err))
