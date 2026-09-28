@@ -1,3 +1,4 @@
+import { SignDemo } from '../demo/signDemo.ts'
 import { SIGNS, type SignId } from '../signs/catalog.ts'
 import { PASS, type SignEval } from '../signs/recognizer.ts'
 import { h } from './dom.ts'
@@ -8,20 +9,30 @@ export class SignCard {
   readonly id: SignId
   private bar: HTMLElement
   private checks: HTMLUListElement
+  private demo: SignDemo | null
 
-  constructor(id: SignId) {
+  /** withDemo: маленькая анимация «как показать» прямо в карточке. */
+  constructor(id: SignId, withDemo = true) {
     this.id = id
     const def = SIGNS[id]
     this.bar = h('i')
     this.checks = h('ul', { class: 'sign-card__checks' })
+    this.demo = withDemo ? new SignDemo(id) : null
     this.el = h(
       'div',
       { class: 'sign-card', 'data-sign': id },
-      h('div', { class: 'sign-card__word' }, def.word),
-      h('div', { class: 'sign-card__how' }, def.how),
-      h('div', { class: 'sign-card__bar' }, this.bar),
-      this.checks,
+      this.demo && h('div', { class: 'sign-card__demo' }, this.demo.el),
+      h('div', { class: 'sign-card__body' },
+        h('div', { class: 'sign-card__word' }, def.word),
+        h('div', { class: 'sign-card__how' }, def.how),
+        h('div', { class: 'sign-card__bar' }, this.bar),
+        this.checks,
+      ),
     )
+  }
+
+  destroy() {
+    this.demo?.destroy()
   }
 
   /** Обновляет полоску близости и список условий; подробности показываем только у самого близкого жеста. */

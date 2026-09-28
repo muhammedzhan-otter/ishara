@@ -6,7 +6,7 @@
 export type Mood = 'neutral' | 'happy' | 'sad'
 
 const SVG = `
-<svg viewBox="0 0 400 225" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Айгерим">
+<svg viewBox="0 0 400 225" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Айгерим">
   <defs>
     <linearGradient id="av-bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#27304a"/>
@@ -17,7 +17,7 @@ const SVG = `
       <stop offset="1" stop-color="#ffd59e" stop-opacity=".25"/>
     </linearGradient>
   </defs>
-  <rect width="400" height="225" fill="url(#av-bg)"/>
+  <rect y="-40" width="400" height="420" fill="url(#av-bg)"/>
   <rect x="26" y="28" width="92" height="118" rx="10" fill="url(#av-window)"/>
   <path d="M72 28v118M26 87h92" stroke="#1a2031" stroke-width="4" opacity=".6"/>
   <rect x="300" y="120" width="70" height="6" rx="3" fill="#3a4466"/>
@@ -30,7 +30,7 @@ const SVG = `
 
   <g class="av-body">
     <path class="av-hair-back" d="M150 108c-6 50 2 86 16 104h68c14-18 22-54 16-104z" fill="#2b1d16"/>
-    <path d="M110 225c6-40 38-60 90-60s84 20 90 60z" fill="#d9895b"/>
+    <path d="M92 360L98 232C104 192 140 168 200 165C260 168 296 192 302 232L308 360z" fill="#d9895b"/>
     <path d="M168 170c8 14 20 20 32 20s24-6 32-20" fill="none" stroke="#f3c9a1" stroke-width="3" opacity=".7"/>
     <path d="M184 150h32v24c-6 6-26 6-32 0z" fill="#e2ad85"/>
 

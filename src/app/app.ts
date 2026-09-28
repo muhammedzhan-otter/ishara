@@ -3,6 +3,7 @@ import { Voice } from '../audio/voice.ts'
 import { Lobby } from '../ui/lobby.ts'
 import { Meeting, type Answer } from '../ui/meeting.ts'
 import { Results } from '../ui/results.ts'
+import { Training } from '../ui/training.ts'
 import { Engine } from './engine.ts'
 
 interface Screen {
@@ -10,7 +11,7 @@ interface Screen {
   destroy(): void
 }
 
-/** Переключает экраны: вход → встреча → итоги → снова встреча. */
+/** Переключает экраны: вход → обучение → встреча → итоги → снова встреча. */
 export class App {
   private engine = new Engine()
   private voice = new Voice()
@@ -23,7 +24,11 @@ export class App {
   }
 
   start() {
-    this.show(new Lobby(this.engine, this.voice, this.sfx, () => this.meeting()))
+    this.show(new Lobby(this.engine, this.voice, this.sfx, () => this.training()))
+  }
+
+  private training() {
+    this.show(new Training(this.engine, this.voice, this.sfx, () => this.meeting()))
   }
 
   private meeting() {

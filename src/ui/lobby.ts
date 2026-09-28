@@ -1,25 +1,29 @@
 import type { Engine, Tick } from '../app/engine.ts'
 import type { Sfx } from '../audio/sfx.ts'
 import type { Voice } from '../audio/voice.ts'
-import { Coach } from '../meeting/coach.ts'
 import { PARTNER_NAME, SCRIPT } from '../meeting/script.ts'
 import { ALL_SIGNS, SIGNS } from '../signs/catalog.ts'
-import { SignRecognizer } from '../signs/recognizer.ts'
 import { CameraError } from '../vision/camera.ts'
+import { SignDemo } from '../demo/signDemo.ts'
 import { Avatar } from './avatar.ts'
 import { h } from './dom.ts'
+import type { Hint } from '../meeting/coach.ts'
 import { HintBar } from './hintBar.ts'
+
+/** Сколько держать руку в кадре, чтобы начать: случайное движение не считается. */
+const HOLD_MS = 1500
 
 /**
  * Первый экран: что это за встреча, как сесть перед камерой и какие жесты понадобятся.
- * Здесь же калибровка: проверяем, что видно лицо, плечи и руку, а войти можно,
- * только помахав рукой, то есть показав первый жест.
+ * Здесь же калибровка: проверяем, что видно лицо, плечи и руку. Жестов человек ещё
+ * не знает, поэтому чтобы начать, достаточно поднять руку и подержать.
  */
 export class Lobby {
   readonly el: HTMLElement
   private off: (() => void) | null = null
-  private recognizer = new SignRecognizer()
-  private coach = new Coach()
+  private holdSince: number | null = null
+  private demos: SignDemo[] = []
+  private meter: HTMLElement
   private tile: HTMLElement
   private hint = new HintBar()
   private button: HTMLButtonElement
@@ -41,9 +45,11 @@ export class Lobby {
     avatar.setMood('happy')
     this.button = h('button', { class: 'btn btn--primary', type: 'button' }, 'Включить камеру')
     this.status = h('p', { class: 'lobby__status' }, 'Загружаем распознавание…')
+    this.meter = h('i')
     this.enter = h('div', { class: 'enter', hidden: true },
-      h('strong', {}, 'Помаши рукой, чтобы войти'),
-      h('span', {}, 'Это жест «Привет»: открытая ладонь у плеча, покачай ею влево и вправо'),
+      h('strong', {}, 'Подними руку и подержи, чтобы начать'),
+      h('span', {}, `Сначала ${PARTNER_NAME} покажет жесты, а ты повторишь. Потом начнётся встреча.`),
+      h('div', { class: 'enter__meter' }, this.meter),
     )
     const check = (text: string) => h('li', {}, text)
     this.checks = {
@@ -67,10 +73,11 @@ export class Lobby {
         h('aside', { class: 'meet-card' },
           h('div', { class: 'meet-card__avatar' }, avatar.el),
           h('h1', {}, `Встреча с ${PARTNER_NAME}`),
-          h('p', { class: 'meet-card__meta' }, `${SCRIPT.length} вопросов, около трёх минут, ответы на русском жестовом языке`),
+          h('p', { class: 'meet-card__meta' }, `Обучение и ${SCRIPT.length} вопросов, около пяти минут. Ответы на русском жестовом языке.`),
           h('ol', { class: 'howto' },
             h('li', {}, 'Сядь так, чтобы камера видела лицо, плечи и руки.'),
-            h('li', {}, `${PARTNER_NAME} говорит, а ты отвечаешь жестами. Карточки внизу покажут, какие жесты подходят.`),
+            h('li', {}, `Сначала ${PARTNER_NAME} покажет восемь жестов, а ты повторишь их за ней.`),
+            h('li', {}, 'Потом встреча: она говорит, а ты отвечаешь жестами.'),
             h('li', {}, 'Если жест не получается, под видео появится подсказка, что именно поправить.'),
           ),
           this.button,
@@ -81,7 +88,11 @@ export class Lobby {
       h('section', { class: 'dictionary' },
         h('h2', {}, 'Жесты этой встречи'),
         h('div', { class: 'dictionary__grid' },
-          ...ALL_SIGNS.map((id) => h('div', { class: 'dict-card' }, h('b', {}, SIGNS[id].word), h('span', {}, SIGNS[id].how))),
+          ...ALL_SIGNS.map((id) => {
+            const demo = new SignDemo(id)
+            this.demos.push(demo)
+            return h('figure', { class: 'dict-card' }, h('div', { class: 'dict-card__demo' }, demo.el), h('figcaption', {}, SIGNS[id].word))
+          }),
         ),
         h('p', { class: 'dictionary__note' }, 'Жесты взяты из словарей русского жестового языка, которым пользуются глухие в Казахстане.'),
       ),
@@ -113,19 +124,28 @@ export class Lobby {
     this.enter.hidden = false
     this.status.textContent = ''
     this.checks.camera.classList.add('ok')
-    this.coach.reset(performance.now())
     this.off = this.engine.on((t) => this.tick(t))
   }
 
   private tick({ features }: Tick) {
-    const state = this.recognizer.update(features, ['privet'])
-    this.checks.body.classList.toggle('ok', state.bodyVisible)
-    this.checks.hand.classList.toggle('ok', state.handVisible)
-    const hint = this.coach.update(features.timestamp, features, state, ['privet'])
+    const t = features.timestamp
+    const body = features.body !== null
+    const hand = features.hands.length > 0
+    this.checks.body.classList.toggle('ok', body)
+    this.checks.hand.classList.toggle('ok', hand)
+
+    let hint: Hint | null = null
+    if (!body) hint = { kind: 'info', text: 'Сядь так, чтобы в кадре были видны лицо и плечи' }
+    else if (!hand) hint = { kind: 'info', text: 'Подними руку в кадр' }
     this.hint.show(hint)
-    this.engine.handColor = hint && hint.kind !== 'info' ? '#ffb547' : '#4f7cff'
-    if (state.recognized) {
-      this.engine.handColor = '#3ddc97'
+
+    this.holdSince = body && hand ? (this.holdSince ?? t) : null
+    const progress = this.holdSince === null ? 0 : Math.min(1, (t - this.holdSince) / HOLD_MS)
+    this.meter.style.width = `${Math.round(progress * 100)}%`
+    this.engine.handColor = progress > 0 ? '#3ddc97' : '#4f7cff'
+    if (progress >= 1) {
+      this.off?.()
+      this.off = null
       this.sfx.join()
       this.onEnter()
     }
@@ -133,5 +153,6 @@ export class Lobby {
 
   destroy() {
     this.off?.()
+    for (const d of this.demos) d.destroy()
   }
 }
