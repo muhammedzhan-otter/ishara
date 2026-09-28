@@ -1,7 +1,8 @@
 import type { SignId } from '../signs/catalog.ts'
 import { Avatar } from '../ui/avatar.ts'
-import { handPoints, lerp3, type V3 } from './handModel.ts'
-import { DEMOS, type Key } from './signDemos.ts'
+import { handPoints, type V3 } from './handModel.ts'
+import { poseAt, rotate, type Pose } from './motion.ts'
+import { DEMOS } from './signDemos.ts'
 
 /*
  * Айгерим показывает жест: поверх рисунка персонажа на canvas рисуются рука в рукаве и кисть.
@@ -20,49 +21,8 @@ const SKIN_EDGE = '#c98f68'
 const SLEEVE = '#c9784c'
 const SLEEVE_EDGE = '#8f4f2c'
 
-const DEG = Math.PI / 180
-
 /** Кадр для показа: от макушки до груди, чтобы жесты у груди помещались. */
 export const DEMO_CROP: [number, number, number, number] = [0, 45, 400, 225]
-
-/** Поворот R = Ry(yaw) · Rx(pitch) · Rz(roll). */
-function rotate([x, y, z]: V3, [pitch, yaw, roll]: [number, number, number]): V3 {
-  const cr = Math.cos(roll * DEG), sr = Math.sin(roll * DEG)
-  ;[x, y] = [x * cr - y * sr, x * sr + y * cr]
-  const cp = Math.cos(pitch * DEG), sp = Math.sin(pitch * DEG)
-  ;[y, z] = [y * cp - z * sp, y * sp + z * cp]
-  const cy = Math.cos(yaw * DEG), sy = Math.sin(yaw * DEG)
-  ;[x, z] = [x * cy + z * sy, -x * sy + z * cy]
-  return [x, y, z]
-}
-
-const smooth = (k: number) => k * k * (3 - 2 * k)
-const mix = (a: number, b: number, k: number) => a + (b - a) * k
-
-interface Pose {
-  points: V3[]
-  pos: [number, number]
-  rot: [number, number, number]
-  alpha: number
-}
-
-function poseAt(keys: Key[], shapes: V3[][], time: number): Pose {
-  const total = keys[keys.length - 1].t
-  const t = time % total
-  let i = 0
-  while (i < keys.length - 2 && keys[i + 1].t <= t) i++
-  const a = keys[i]
-  const b = keys[i + 1]
-  const k = smooth(Math.min(1, (t - a.t) / Math.max(1e-6, b.t - a.t)))
-  const ra = a.rot ?? [0, 0, 0]
-  const rb = b.rot ?? [0, 0, 0]
-  return {
-    points: shapes[i].map((p, j) => lerp3(p, shapes[i + 1][j], k)),
-    pos: [mix(a.pos[0], b.pos[0], k), mix(a.pos[1], b.pos[1], k)],
-    rot: [mix(ra[0], rb[0], k), mix(ra[1], rb[1], k), mix(ra[2], rb[2], k)],
-    alpha: mix(a.alpha ?? 1, b.alpha ?? 1, k),
-  }
-}
 
 const CHAINS: { idx: number[]; width: number }[] = [
   { idx: [1, 2, 3, 4], width: 0.25 },
@@ -136,10 +96,11 @@ export class SignDemo {
     this.raf = requestAnimationFrame(this.frame)
     const { canvas, ctx, crop } = this
     const w = canvas.clientWidth
-    if (!w) return
+    const hgt = canvas.clientHeight
+    if (!w || !hgt) return
     const dpr = Math.min(2, window.devicePixelRatio || 1)
     const W = Math.round(w * dpr)
-    const H = Math.round((w * crop[3] * dpr) / crop[2])
+    const H = Math.round(hgt * dpr)
     if (canvas.width !== W || canvas.height !== H) {
       canvas.width = W
       canvas.height = H
@@ -147,8 +108,12 @@ export class SignDemo {
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, W, H)
     if (!this.sign) return
-    const s = W / crop[2]
-    ctx.setTransform(s, 0, 0, s, -crop[0] * s, -crop[1] * s)
+    // Как у SVG с preserveAspectRatio="xMidYMid slice": заполняем плитку и центрируем,
+    // чтобы рука совпадала с рисунком при любых пропорциях плитки.
+    const s = Math.max(W / crop[2], H / crop[3])
+    const ox = (W - crop[2] * s) / 2 - crop[0] * s
+    const oy = (H - crop[3] * s) / 2 - crop[1] * s
+    ctx.setTransform(s, 0, 0, s, ox, oy)
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     let time = this.frozen ?? (now - this.started) / 1000

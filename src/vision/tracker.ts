@@ -34,6 +34,8 @@ export class Tracker {
   private hands!: HandLandmarker
   private pose!: PoseLandmarker
   private lastTs = -1
+  private frameNo = 0
+  private lastPose: NormalizedLandmark[] | null = null
 
   /** Загружает модели; onProgress получает долю скачанного от 0 до 1. */
   async init(onProgress?: Progress): Promise<void> {
@@ -80,7 +82,8 @@ export class Tracker {
     this.lastTs = ts
 
     const h = this.hands.detectForVideo(video, ts)
-    const p = this.pose.detectForVideo(video, ts)
+    // Поза меняется медленнее кистей, её хватает считать через кадр: так вдвое меньше работы.
+    if (this.frameNo++ % 2 === 0) this.lastPose = this.pose.detectForVideo(video, ts).landmarks[0] ?? null
 
     const hands: Hand[] = h.landmarks.map((points, i) => {
       const cat = h.handedness[i]?.[0]
@@ -92,7 +95,7 @@ export class Tracker {
 
     return {
       hands,
-      pose: p.landmarks[0] ?? null,
+      pose: this.lastPose,
       width: video.videoWidth,
       height: video.videoHeight,
       timestamp: ts,

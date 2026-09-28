@@ -1,4 +1,4 @@
-import { SIGNS, type SignId } from '../signs/catalog.ts'
+import { SIGNS, type SignId, type Target } from '../signs/catalog.ts'
 import type { RecognizerState, SignEval } from '../signs/recognizer.ts'
 import type { FrameFeatures } from '../vision/features.ts'
 
@@ -14,6 +14,13 @@ export type HintKind = 'info' | 'fix' | 'near'
 export interface Hint {
   text: string
   kind: HintKind
+  /** Куда поставить руку и откуда она сейчас: рисуется поверх видео. */
+  guide?: Guide
+}
+
+export interface Guide {
+  target: Target
+  from: { x: number; y: number } | null
 }
 
 const HOLD_MS = 1500
@@ -27,6 +34,8 @@ const NEAR_MS = 2500
 export class Coach {
   /** Сколько разных подсказок-исправлений получил человек на этом шаге. */
   fixes = 0
+  /** Тексты этих подсказок по порядку: из них итоги собирают «над чем поработать». */
+  log: string[] = []
   private current: Hint | null = null
   private shownAt = 0
   private handSince: number | null = null
@@ -37,6 +46,7 @@ export class Coach {
 
   reset(t: number) {
     this.fixes = 0
+    this.log = []
     this.current = null
     this.handSince = null
     this.lastHand = this.lastBody = this.stepStart = t
@@ -64,21 +74,25 @@ export class Coach {
     if (this.current && next?.text !== this.current.text && holding) return this.current
     if (next?.text !== this.current?.text) {
       this.shownAt = t
-      if (next && next.kind !== 'info') this.fixes++
+      if (next && next.kind !== 'info') {
+        this.fixes++
+        this.log.push(next.text)
+      }
     }
     this.current = next
     return next
   }
 
   private pick(t: number, f: FrameFeatures, state: RecognizerState, expect: SignId[]): Hint | null {
-    if (t - this.lastBody > NO_BODY_MS && t - this.stepStart > NO_BODY_MS) {
-      return { kind: 'info', text: 'Сядь так, чтобы в кадре были видны лицо и плечи' }
+    if (state.needBody && t - this.lastBody > NO_BODY_MS && t - this.stepStart > NO_BODY_MS) {
+      return { kind: 'info', text: 'Отодвинься немного: для этого жеста нужно видеть лицо и плечи' }
     }
     if (!state.handVisible) {
       return t - this.lastHand > NO_HAND_MS ? { kind: 'info', text: 'Подними руку в кадр, чтобы ответить жестом' } : null
     }
     const edge = f.hands.find((h) => h.screen.x < 0.06 || h.screen.x > 0.94 || h.screen.y > 0.94)
-    if (edge) return { kind: 'fix', text: 'Рука у края кадра, сдвинь её ближе к центру' }
+    // Это про посадку перед камерой, а не ошибка жеста: в «над чем поработать» не попадает.
+    if (edge) return { kind: 'info', text: 'Рука у края кадра, сдвинь её ближе к центру' }
 
     const best = bestEval(state.evals)
     const want = expect.map((id) => `«${SIGNS[id].word}»`).join(' или ')
@@ -88,7 +102,8 @@ export class Coach {
     }
     if (this.handSince === null || t - this.handSince < TRY_MS || !best?.failed) return null
     const prefix = expect.length > 1 ? `«${SIGNS[best.id].word}»: ` : ''
-    return { kind: 'fix', text: prefix + best.failed.hint }
+    const { target } = best.failed
+    return { kind: 'fix', text: prefix + best.failed.hint, guide: target && { target, from: best.palm } }
   }
 }
 

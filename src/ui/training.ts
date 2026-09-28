@@ -74,7 +74,10 @@ export class Training {
 
   private async run() {
     await this.say(`Привет! Я ${PARTNER_NAME}. Сначала выучим восемь жестов для нашей встречи.`)
+    // Для разработки: ?from=spasibo начинает обучение с этого жеста.
+    const from = import.meta.env.DEV ? TRAINING.indexOf(new URLSearchParams(location.search).get('from') as SignId) : -1
     for (const [i, id] of TRAINING.entries()) {
+      if (i < from) continue
       if (this.closed) return
       this.stepLabel.textContent = `Жест ${i + 1} из ${TRAINING.length}`
       this.dots.forEach((d, j) => d.classList.toggle('on', j <= i))
@@ -122,6 +125,7 @@ export class Training {
     this.hint.show(state.recognized ? null : hint)
     this.card?.update(state.evals[0], true)
     this.engine.handColor = hint && hint.kind !== 'info' ? COLOR.warn : COLOR.idle
+    this.engine.guide = state.recognized ? null : (hint?.guide ?? null)
 
     if (state.recognized) {
       this.engine.handColor = COLOR.ok
@@ -135,6 +139,7 @@ export class Training {
   private finish(ok: boolean) {
     const t = this.target
     this.target = null
+    this.engine.guide = null
     this.hint.show(null)
     t?.resolve(ok)
     wait(900).then(() => {

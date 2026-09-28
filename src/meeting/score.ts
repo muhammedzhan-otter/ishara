@@ -20,6 +20,28 @@ export interface Record {
 }
 
 const KEY = 'ishara.records'
+const LAST = 'ishara.last'
+
+/** Результат прошлой попытки в этом браузере: для строки «лучше, чем в прошлый раз». */
+export function swapLastScore(score: number): number | null {
+  try {
+    const prev = localStorage.getItem(LAST)
+    localStorage.setItem(LAST, String(score))
+    return prev === null ? null : Number(prev)
+  } catch {
+    return null
+  }
+}
+
+/** Самые частые подсказки за встречу: что стоит потренировать. */
+export function topMistakes(hints: string[], limit = 3): { text: string; count: number }[] {
+  const counts = new Map<string, number>()
+  for (const h of hints) counts.set(h, (counts.get(h) ?? 0) + 1)
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([text, count]) => ({ text, count }))
+}
 
 /** Рекорды хранятся только в этом браузере. Если хранилище недоступно, просто не запоминаем. */
 export function loadRecords(): Record[] {

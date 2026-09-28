@@ -1,6 +1,6 @@
 import type { Engine, Tick } from '../app/engine.ts'
 import { Coach } from '../meeting/coach.ts'
-import { MAX_PER_ANSWER, answerScore, saveRecord } from '../meeting/score.ts'
+import { MAX_PER_ANSWER, answerScore, saveRecord, swapLastScore, topMistakes } from '../meeting/score.ts'
 import { PARTNER_NAME } from '../meeting/script.ts'
 import { SIGNS } from '../signs/catalog.ts'
 import { SignRecognizer } from '../signs/recognizer.ts'
@@ -32,6 +32,13 @@ export class Results {
     const date = now.toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
     const records = saveRecord({ score: total, ms, date })
     const firstTry = answers.filter((a) => a.sign && a.fixes === 0).length
+    const prev = swapLastScore(total)
+    const mistakes = topMistakes(answers.flatMap((a) => a.hints))
+    const progress =
+      prev === null ? null
+      : total > prev ? `На ${total - prev} очков лучше, чем в прошлый раз.`
+      : total === prev ? 'Столько же, сколько в прошлый раз.'
+      : `В прошлый раз было ${prev}. Получится лучше!`
 
     const tile = h('div', { class: 'tile tile--self tile--small' }, this.hint.el, h('div', { class: 'tile__label' }, 'Ты'))
     this.el = h('section', { class: 'screen results' },
@@ -43,6 +50,13 @@ export class Results {
         ),
         h('p', { class: 'results__summary' },
           `Время ${formatTime(ms)}. С первой попытки: ${firstTry} из ${answers.length}.`,
+          progress && h('span', { class: 'results__progress' }, ` ${progress}`),
+        ),
+        h('section', { class: 'mistakes' },
+          h('h2', {}, 'Над чем поработать'),
+          mistakes.length
+            ? h('ol', {}, ...mistakes.map((m) => h('li', {}, m.text, h('span', {}, m.count > 1 ? ` (${m.count} раза)` : ''))))
+            : h('p', {}, 'Подсказки не понадобились. Все жесты получились сразу!'),
         ),
         h('table', { class: 'results__table' },
           h('thead', {}, h('tr', {}, h('th', {}, 'Вопрос'), h('th', {}, 'Твой жест'), h('th', {}, 'Время'), h('th', {}, 'Подсказки'), h('th', {}, 'Очки'))),
@@ -72,6 +86,7 @@ export class Results {
         ),
       ),
     )
+    if (stars >= 2) this.el.append(confetti())
     engine.mount(tile)
     engine.handColor = '#4f7cff'
     this.coach.reset(performance.now())
@@ -93,4 +108,21 @@ export class Results {
   destroy() {
     this.off()
   }
+}
+
+/** Праздничное конфетти для хорошего результата: чистый CSS, без библиотек. */
+function confetti(): HTMLElement {
+  const colors = ['#4f7cff', '#3ddc97', '#ffb547', '#ff6b8b', '#ffffff']
+  const box = h('div', { class: 'confetti', 'aria-hidden': true })
+  for (let i = 0; i < 60; i++) {
+    const piece = h('i')
+    piece.style.left = `${Math.random() * 100}%`
+    piece.style.background = colors[i % colors.length]
+    piece.style.animationDelay = `${Math.random() * 1.2}s`
+    piece.style.animationDuration = `${2.4 + Math.random() * 1.6}s`
+    piece.style.setProperty('--drift', `${(Math.random() - 0.5) * 160}px`)
+    piece.style.setProperty('--spin', `${Math.random() * 720 - 360}deg`)
+    box.append(piece)
+  }
+  return box
 }

@@ -675,7 +675,16 @@ button {
   }
 
   .stage .tile--partner {
-    aspect-ratio: 16 / 7;
+    aspect-ratio: 16 / 9;
+  }
+
+  /* Карточка с кнопкой «Включить камеру» первой: пока камера выключена, окно видео пустое. */
+  .lobby .meet-card {
+    order: -1;
+  }
+
+  .sign-card {
+    grid-template-columns: 110px 1fr;
   }
 
   .stage .tile--self {
@@ -785,4 +794,61 @@ button {
 
 .training__card .sign-card__checks {
   font-size: 16px;
+}
+
+/* ---------- Итоги: ошибки и конфетти ---------- */
+
+.results__progress {
+  color: var(--ok);
+}
+
+.mistakes h2 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.mistakes ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 22px;
+  color: #ffe2b0;
+}
+
+.mistakes li span {
+  color: var(--muted);
+}
+
+.confetti {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti i {
+  position: absolute;
+  top: -20px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: fall linear 1 forwards;
+}
+
+@keyframes fall {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0);
+  }
+  100% {
+    opacity: 0.9;
+    transform: translate(var(--drift), 105vh) rotate(var(--spin));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti {
+    display: none;
+  }
 }

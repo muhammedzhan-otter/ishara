@@ -45,6 +45,10 @@ interface Vec3 {
 export interface Body {
   /** Ширина плеч в пикселях кадра. */
   shoulderWidth: number
+  /** Нос в пикселях зеркального кадра: начало координат тела. */
+  nose: Vec2
+  /** Плечи не попали в кадр, их ширина оценена по расстоянию между глазами. */
+  estimated: boolean
   /** Высоты (в координатах тела) линий глаз, рта, подбородка и плеч. */
   eyeY: number
   mouthY: number
@@ -116,22 +120,38 @@ function bodyFrame(frame: Frame): Body | null {
   const W = frame.width
   const H = frame.height
   const px = (i: number) => ({ x: (1 - p[i].x) * W, y: p[i].y * H })
+  const nose = px(NOSE)
+  const eyeL = px(EYE_L)
+  const eyeR = px(EYE_R)
+  const eyeDist = Math.hypot(eyeL.x - eyeR.x, eyeL.y - eyeR.y)
   const sl = px(SHOULDER_L)
   const sr = px(SHOULDER_R)
-  const shoulderWidth = Math.hypot(sl.x - sr.x, sl.y - sr.y)
+  let shoulderWidth = Math.hypot(sl.x - sr.x, sl.y - sr.y)
+  let shoulderPx = (sl.y + sr.y) / 2
+
+  // Когда человек сидит близко к ноутбуку, плечи уходят за нижний край кадра.
+  // Тогда берём пропорции лица: ширина плеч примерно в шесть раз больше расстояния между глазами.
+  const seen = (i: number) => (p[i].visibility ?? 1) > 0.4 && p[i].y < 1
+  const estimated = !(seen(SHOULDER_L) && seen(SHOULDER_R))
+  if (estimated) {
+    if (eyeDist < 6) return null
+    shoulderWidth = eyeDist * 6
+    shoulderPx = nose.y + 0.55 * shoulderWidth
+  }
   if (shoulderWidth < 20) return null
 
-  const nose = px(NOSE)
   const toBodyY = (y: number) => (y - nose.y) / shoulderWidth
-  const eyeY = toBodyY((px(EYE_L).y + px(EYE_R).y) / 2)
+  const eyeY = toBodyY((eyeL.y + eyeR.y) / 2)
   const mouthY = toBodyY((px(MOUTH_L).y + px(MOUTH_R).y) / 2)
   return {
     shoulderWidth,
+    nose,
+    estimated,
     eyeY,
     mouthY,
     // Подбородок Pose не отдаёт: он примерно на две трети «глаза–рот» ниже рта.
     chinY: mouthY + (mouthY - eyeY) * 0.7,
-    shoulderY: toBodyY((sl.y + sr.y) / 2),
+    shoulderY: toBodyY(shoulderPx),
   }
 }
 

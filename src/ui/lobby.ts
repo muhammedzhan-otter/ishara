@@ -22,6 +22,7 @@ export class Lobby {
   readonly el: HTMLElement
   private off: (() => void) | null = null
   private holdSince: number | null = null
+  private lastHand = 0
   private demos: SignDemo[] = []
   private meter: HTMLElement
   private tile: HTMLElement
@@ -120,6 +121,8 @@ export class Lobby {
     }
     this.tile.querySelector('.tile__empty')?.remove()
     this.engine.mount(this.tile)
+    // На телефоне окно камеры ниже карточки: показываем его.
+    this.tile.scrollIntoView({ behavior: 'smooth', block: 'start' })
     this.button.hidden = true
     this.enter.hidden = false
     this.status.textContent = ''
@@ -135,11 +138,18 @@ export class Lobby {
     this.checks.hand.classList.toggle('ok', hand)
 
     let hint: Hint | null = null
-    if (!body) hint = { kind: 'info', text: 'Сядь так, чтобы в кадре были видны лицо и плечи' }
-    else if (!hand) hint = { kind: 'info', text: 'Подними руку в кадр' }
+    if (!hand) hint = { kind: 'info', text: 'Подними руку в кадр' }
+    else if (!body) hint = { kind: 'info', text: 'Лучше отодвинься, чтобы было видно лицо и плечи' }
     this.hint.show(hint)
 
-    this.holdSince = body && hand ? (this.holdSince ?? t) : null
+    // Начать можно и без плеч в кадре: подсказка про посадку останется видна.
+    // Если MediaPipe на миг потерял кисть, прогресс не сбрасываем.
+    if (hand) {
+      this.lastHand = t
+      this.holdSince ??= t
+    } else if (t - this.lastHand > 300) {
+      this.holdSince = null
+    }
     const progress = this.holdSince === null ? 0 : Math.min(1, (t - this.holdSince) / HOLD_MS)
     this.meter.style.width = `${Math.round(progress * 100)}%`
     this.engine.handColor = progress > 0 ? '#3ddc97' : '#4f7cff'

@@ -18,11 +18,15 @@ export interface SignEval {
   score: number
   /** Первое по важности невыполненное условие. */
   failed: Check | null
+  /** Где сейчас ладонь этой руки, в координатах тела: от неё рисуем стрелку к цели. */
+  palm: HandFeatures['palmPos']
 }
 
 export interface RecognizerState {
   handVisible: boolean
   bodyVisible: boolean
+  /** Среди ожидаемых есть жесты, которым нужно видеть лицо и плечи, а их не видно. */
+  needBody: boolean
   evals: SignEval[]
   /** Жест, распознанный в этом кадре. */
   recognized: SignId | null
@@ -53,19 +57,21 @@ export class SignRecognizer {
     const state: RecognizerState = {
       handVisible: frame.hands.length > 0,
       bodyVisible: body !== null,
+      needBody: body === null && signs.some((id) => SIGNS[id].needsBody),
       evals: [],
       recognized: null,
     }
-    if (!body) return state
 
     for (const id of signs) {
+      const def = SIGNS[id]
+      if (def.needsBody && !body) continue
       let best: SignEval | null = null
       for (const h of frame.hands) {
-        if (!h.palmPos) continue
-        const checks = SIGNS[id].checks({ f: h, hist: this.hist[h.side], body, t })
+        if (def.needsBody && !h.palmPos) continue
+        const checks = def.checks({ f: h, hist: this.hist[h.side], body, t })
         const score = checks.reduce((a, c) => a + c.ok, 0) / checks.length
         const failed = checks.find((c) => c.ok < PASS) ?? null
-        if (!best || score > best.score) best = { id, side: h.side, checks, score, failed }
+        if (!best || score > best.score) best = { id, side: h.side, checks, score, failed, palm: h.palmPos }
       }
       if (best) state.evals.push(best)
     }

@@ -18,6 +18,8 @@ export interface Answer {
   sign: SignId | null
   ms: number
   fixes: number
+  /** Какие подсказки понадобились, по порядку. */
+  hints: string[]
 }
 
 const COLOR = { idle: '#4f7cff', warn: '#ffb547', ok: '#3ddc97' }
@@ -98,7 +100,7 @@ export class Meeting {
       const started = performance.now()
       this.showCards(step.expect, step.expect.length > 1 ? 'Ответь одним из жестов' : 'Ответь жестом')
       const sign = await this.listen(step.expect)
-      answers.push({ question: step.say, expect: step.expect, sign, ms: performance.now() - started, fixes: this.coach.fixes })
+      answers.push({ question: step.say, expect: step.expect, sign, ms: performance.now() - started, fixes: this.coach.fixes, hints: [...this.coach.log] })
 
       if (sign) {
         this.cards.find((c) => c.id === sign)?.celebrate()
@@ -168,6 +170,7 @@ export class Meeting {
     const best = bestEval(state.evals)
     for (const card of this.cards) card.update(state.evals.find((e) => e.id === card.id), card.id === best?.id)
     this.engine.handColor = hint && hint.kind !== 'info' ? COLOR.warn : COLOR.idle
+    this.engine.guide = state.recognized ? null : (hint?.guide ?? null)
 
     const waited = performance.now() - l.started
     if (!state.recognized && !this.showingHow && waited > SHOW_HOW_MS) {
@@ -189,6 +192,7 @@ export class Meeting {
     const l = this.listening
     this.listening = null
     this.showingHow = false
+    this.engine.guide = null
     this.partner.stop()
     this.hint.show(null)
     l?.resolve(sign)
