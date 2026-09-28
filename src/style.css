@@ -259,6 +259,17 @@ button {
   color: #fff;
 }
 
+.btn--ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.btn--ghost:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
 .btn:disabled {
   opacity: 0.6;
   cursor: default;
@@ -851,4 +862,10 @@ button {
   .confetti {
     display: none;
   }
+}
+
+.training__footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
 }

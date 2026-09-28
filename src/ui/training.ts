@@ -49,6 +49,13 @@ export class Training {
     this.dots = TRAINING.map(() => h('i'))
     this.selfTile = h('div', { class: 'tile tile--self' }, this.hint.el, h('div', { class: 'tile__label' }, 'Ты'))
     this.cardBox = h('div', { class: 'training__card' })
+    // Для тех, кто уже знает жесты или проходит второй раз: сразу к встрече.
+    const skip = h('button', { class: 'btn btn--ghost', type: 'button' }, 'Пропустить обучение')
+    skip.addEventListener('click', () => {
+      if (this.closed) return
+      this.closed = true
+      onDone()
+    })
 
     this.el = h('section', { class: 'screen meeting training' },
       h('header', { class: 'topbar' },
@@ -62,6 +69,7 @@ export class Training {
       ),
       h('p', { class: 'training__lead' }, `Смотри, как показывает ${PARTNER_NAME}, и повтори правой рукой, как в зеркале.`),
       this.cardBox,
+      h('div', { class: 'training__footer' }, skip),
     )
 
     engine.mount(this.selfTile)
@@ -88,6 +96,7 @@ export class Training {
       this.demo.play(id)
       await this.say(`Жест «${SIGNS[id].word}». Повтори за мной.`)
       const ok = await this.expect(id)
+      if (this.closed) return
       if (ok) {
         this.card.celebrate()
         this.selfTile.dataset.said = SIGNS[id].word
@@ -104,6 +113,8 @@ export class Training {
   }
 
   private async say(text: string) {
+    // После «Пропустить» обучение закрыто: Айгерим не должна договаривать поверх встречи.
+    if (this.closed) return
     this.demo.figure.setSpeaking(true)
     await this.voice.say(text, 'partner')
     this.demo.figure.setSpeaking(false)
