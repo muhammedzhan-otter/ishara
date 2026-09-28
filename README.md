@@ -6,7 +6,7 @@ Ishara переводит жесты рук в текст и речь прямо
 
 ## Попробовать онлайн
 
-Ссылка появится после первого деплоя.
+https://muhammedzhan-otter.github.io/ishara/
 
 Нужен компьютер или телефон с камерой и браузер Chrome, Edge или Safari. Когда браузер спросит про камеру, нажмите «Разрешить».
 
@@ -15,7 +15,7 @@ Ishara переводит жесты рук в текст и речь прямо
 Нужен Node.js версии 20 или новее.
 
 ```bash
-git clone https://github.com/OWNER/ishara.git
+git clone https://github.com/muhammedzhan-otter/ishara.git
 cd ishara
 npm install
 npm run dev
