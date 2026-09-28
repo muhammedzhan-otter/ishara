@@ -10,8 +10,12 @@ export type Speaker = 'partner' | 'user'
 const PARTNER_VOICES = ['Milena', 'Google русский', 'Irina', 'Svetlana', 'Katya', 'Alena', 'Dariya']
 const USER_VOICES = ['Yuri', 'Pavel', 'Dmitri', 'Maxim']
 
+/** Пауза между cancel() и новой фразой, иначе Chrome её молча пропускает. */
+const STOP_GAP_MS = 250
+
 export class Voice {
   enabled = true
+  private stoppedAt = -Infinity
   private voices: SpeechSynthesisVoice[] = []
   private readonly synth = 'speechSynthesis' in window ? window.speechSynthesis : null
 
@@ -56,7 +60,11 @@ export class Voice {
         clearTimeout(guard)
         setTimeout(resolve, estimate)
       }
-      this.synth!.speak(u)
+      // Chrome теряет фразу, если её запустить сразу после cancel(): например, когда
+      // «Пропустить обучение» оборвал Айгерим и встреча тут же начала новую реплику.
+      const sinceStop = performance.now() - this.stoppedAt
+      if (sinceStop < STOP_GAP_MS) setTimeout(() => this.synth!.speak(u), STOP_GAP_MS - sinceStop)
+      else this.synth!.speak(u)
     })
   }
 
@@ -70,6 +78,7 @@ export class Voice {
 
   stop() {
     this.synth?.cancel()
+    this.stoppedAt = performance.now()
   }
 }
 
