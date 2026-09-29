@@ -215,35 +215,13 @@
 }
 
 /*
- * Карточки в ряд выровнены по строкам (subgrid): слово, описание, полоса «насколько похоже»
- * и чек-лист начинаются на одной высоте во всех карточках, низ у карточек общий.
- * Карточка-контейнер (container-type) отключила бы subgrid: контейнером здесь служит ряд
- * карточек (answers), и два правила по ширине карточки переписаны через его ширину.
+ * Карточки в ряд одной высоты: полоса «насколько похоже» прижата к низу своей строки,
+ * чек-лист идёт последним. Раньше ряд выравнивался через subgrid, но Safari вместе с
+ * именованными областями карточки складывал всё в одну клетку, поэтому здесь простая сетка.
  */
-@supports (grid-template-rows: subgrid) {
-  @media (min-width: 821px) {
-    .meeting .answer__cards.is-multi .sign-card {
-      container-type: normal;
-      align-self: stretch;
-      grid-row: span 4;
-      grid-template-rows: subgrid;
-      row-gap: 6px;
-    }
-
-    /* Два варианта, каждая карточка шире 560 px: чек-лист в две колонки. */
-    @container answers (min-width: 1136px) {
-      .meeting .answer__cards.is-multi:not(:has(> :nth-child(3))) .sign-card__checks {
-        grid-template-columns: 1fr 1fr;
-        column-gap: 20px;
-      }
-    }
-
-    /* Три варианта, карточка уже 300 px: чип «Ближе всего» не помещается рядом со словом. */
-    @container answers (max-width: 948px) {
-      .meeting .answer__cards.is-multi:has(> :nth-child(3)) .sign-card.is-focused:not(.is-done) .sign-card__word::after {
-        display: none;
-      }
-    }
+@media (min-width: 821px) {
+  .meeting .answer__cards.is-multi {
+    align-items: stretch;
   }
 }
 
