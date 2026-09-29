@@ -24,23 +24,29 @@ export class App {
   }
 
   start() {
-    this.show(new Lobby(this.engine, this.voice, this.sfx, () => this.training()))
+    this.show(() => new Lobby(this.engine, this.voice, this.sfx, () => this.training()))
   }
 
   private training() {
-    this.show(new Training(this.engine, this.voice, this.sfx, () => this.meeting()))
+    this.show(() => new Training(this.engine, this.voice, this.sfx, () => this.meeting()))
   }
 
   private meeting() {
-    this.show(new Meeting(this.engine, this.voice, this.sfx, (answers, ms) => this.results(answers, ms)))
+    this.show(() => new Meeting(this.engine, this.voice, this.sfx, (answers, ms) => this.results(answers, ms)))
   }
 
   private results(answers: Answer[], ms: number) {
-    this.show(new Results(this.engine, answers, ms, () => this.meeting()))
+    this.show(() => new Results(this.engine, answers, ms, () => this.meeting()))
   }
 
-  private show(next: Screen) {
+  /**
+   * Старый экран закрываем до того, как создать новый: экран сразу начинает говорить,
+   * а destroy() старого останавливает голос и оборвал бы первую реплику нового.
+   */
+  private show(make: () => Screen) {
     this.screen?.destroy()
+    this.screen = null
+    const next = make()
     this.screen = next
     this.root.replaceChildren(next.el)
     window.scrollTo(0, 0)
