@@ -59,6 +59,13 @@ export class Lobby {
   private hint = new HintBar()
   private button: HTMLButtonElement
   private status: HTMLElement
+  /** Распознавание загружено: после ошибки камеры строка состояния возвращается к «готово». */
+  private modelsReady = false
+  /**
+   * Камера не включилась. Пока так, загрузка распознавания не пишет в строку состояния,
+   * иначе «Распознавание готово» затёрло бы причину, и человек не понял бы, что чинить.
+   */
+  private cameraError = false
   private checks: Record<'camera' | 'body' | 'hand', HTMLElement>
   private readonly engine: Engine
   private readonly voice: Voice
@@ -194,8 +201,13 @@ export class Lobby {
       ),
     )
 
-    engine.loadModels((p) => this.setStatus('loading', `Загружаем распознавание: ${Math.round(p * 100)}%`))
-      .then(() => this.setStatus('ready', 'Распознавание готово'))
+    engine.loadModels((p) => {
+      if (!this.cameraError) this.setStatus('loading', `Загружаем распознавание: ${Math.round(p * 100)}%`)
+    })
+      .then(() => {
+        this.modelsReady = true
+        if (!this.cameraError) this.setStatus('ready', 'Распознавание готово')
+      })
       .catch(() => this.setStatus('error', 'Не удалось загрузить распознавание. Обнови страницу.'))
     this.button.addEventListener('click', () => this.start())
   }
@@ -225,9 +237,15 @@ export class Lobby {
     this.voice.unlock()
     this.button.disabled = true
     this.setButton(true, 'Включаем камеру…')
+    if (this.cameraError) {
+      this.cameraError = false
+      if (this.modelsReady) this.setStatus('ready', 'Распознавание готово')
+      else this.setStatus('loading', 'Загружаем распознавание…')
+    }
     try {
       await this.engine.start()
     } catch (err) {
+      this.cameraError = true
       this.button.disabled = false
       this.setButton(false, 'Попробовать ещё раз')
       this.setStatus('error', err instanceof CameraError ? `${err.message}. ${err.hint}.` : `Ошибка: ${String(err)}`)
