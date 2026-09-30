@@ -205,9 +205,12 @@
   color: var(--text-3);
 }
 
-/* Несколько вариантов: колонки не уже 300 px, иначе текст рядом с показом не помещается. */
+/*
+ * Несколько вариантов: колонки не уже 300 px, иначе текст рядом с показом не помещается.
+ * Контейнером для @container эта сетка не делается: Safari 18 тогда сводит колонки auto-fit
+ * к нулю и карточки сжимаются до 40 px.
+ */
 .meeting .answer__cards {
-  container: answers / inline-size;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 16px;
@@ -238,12 +241,10 @@
 }
 
 /* Три варианта в ряд на ноутбуке с узким экраном: миниатюра меньше, тексту больше места. */
-@media (min-width: 821px) {
-  @container answers (max-width: 1240px) {
-    .meeting .answer__cards.is-multi .sign-card {
-      grid-template-columns: 100px minmax(0, 1fr);
-      column-gap: 14px;
-    }
+@media (min-width: 821px) and (max-width: 1400px) {
+  .meeting .answer__cards.is-multi .sign-card {
+    grid-template-columns: 100px minmax(0, 1fr);
+    column-gap: 14px;
   }
 }
 
